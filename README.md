@@ -4,6 +4,8 @@
 
 By leveraging a custom RSS proxy server, an embedded SQLite database, and advanced keyword heuristics, Newsdesk offers a sophisticated, uninterrupted reading experience engineered for professional financial analysis.
 
+![Newsdesk Terminal Interface](./.github/assets/screenshot.png)
+
 ---
 
 ## ✨ Core Capabilities
@@ -95,5 +97,16 @@ Features a custom backend proxy endpoint designed to strip restrictive `X-Frame-
 ```
 
 ---
+
+## 👨‍💻 Author & Sponsorship
+
+**Mr. Chartist — Rohit Singh**  
+*SEBI Registered Research Analyst (INH000015297)*  
+
+Newsdesk is built as part of the broader **Mr. Chartist** ecosystem to deploy institutional-grade data intelligence to the public. If you found this open-source terminal helpful for your trading and market analysis, consider supporting the project:
+
+💖 **[Sponsor & Support Mr. Chartist](https://mrchartist.com)**  
+📱 **[Join the Community](https://t.me/MrChartist)**  
+🐦 **[Follow on X (Twitter)](https://twitter.com/mrchartist)**  
 
 *Architected for speed, permanence, and maximum intelligence density.*
