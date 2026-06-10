@@ -188,6 +188,10 @@
 }
 .live-dot { animation: live-pulse 2s ease-in-out infinite; }
 
+/* Hide scrollbar but keep scrollability (filter pills, index strip) */
+.scrollbar-none { scrollbar-width: none; -ms-overflow-style: none; }
+.scrollbar-none::-webkit-scrollbar { display: none; }
+
 /* Custom scrollbar */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }

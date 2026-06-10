@@ -99,7 +99,7 @@ async function fetchIndices() {
   try {
     const payload = {
       symbols: { tickers: INDEX_TICKERS },
-      columns: ['name', 'description', 'close', 'change', 'change_abs', 'High.D', 'Low.D'],
+      columns: ['name', 'description', 'close', 'change', 'change_abs', 'high', 'low'],
     };
 
     const res = await fetch(TV_SCAN_URL, {

@@ -2,12 +2,13 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Activity, Database, Clock, Layers } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useNewsFeed } from '@/hooks/useNewsFeed';
+import { useNewsFeed, useFeedSources } from '@/hooks/useNewsFeed';
 import { useStocks } from '@/hooks/useStockData';
 
 export default function HeroStats() {
   const { data: newsData, isFetching: isNewsFetching } = useNewsFeed();
   const { data: stockData, isFetching: isStockFetching, dataUpdatedAt } = useStocks();
+  const { data: feedSources } = useFeedSources();
 
   const [lastRefreshed, setLastRefreshed] = useState('Just now');
 
@@ -37,7 +38,7 @@ export default function HeroStats() {
     },
     {
       label: 'Active Feeds',
-      value: 25,
+      value: feedSources?.length || 0,
       icon: Layers,
       color: 'text-amber-500'
     },

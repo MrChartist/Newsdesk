@@ -1,11 +1,9 @@
 import { useNewsFeed } from '@/hooks/useNewsFeed';
-import { useStocks } from '@/hooks/useStockData';
-import { Flame, Activity, Zap } from 'lucide-react';
+import { Zap } from 'lucide-react';
 import type { NewsItem } from '@/types/news';
 
 export default function TickerBar() {
   const { data: newsData } = useNewsFeed();
-  const { data: moversData } = useStocks(); // can use useTopMovers instead, but it's okay
 
   // Get breaking news (last 5 hr)
   const breakingNews = newsData?.items?.filter(
