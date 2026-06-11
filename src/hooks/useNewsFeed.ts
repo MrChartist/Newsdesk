@@ -1,9 +1,15 @@
 import { useQuery } from '@tanstack/react-query';
-import type { NewsFeedResponse, NewsItem } from '@/types/news';
+import type { NewsFeedResponse, NewsItem, FeedSource } from '@/types/news';
 
 async function fetchNews(): Promise<NewsFeedResponse> {
   const res = await fetch('/api/feeds');
   if (!res.ok) throw new Error('Failed to fetch news');
+  return res.json();
+}
+
+async function fetchFeedSources(): Promise<FeedSource[]> {
+  const res = await fetch('/api/feeds/sources');
+  if (!res.ok) throw new Error('Failed to fetch feed sources');
   return res.json();
 }
 
@@ -13,6 +19,14 @@ export function useNewsFeed(refetchInterval = 60000) {
     queryFn: fetchNews,
     refetchInterval,
     staleTime: 30000,
+  });
+}
+
+export function useFeedSources() {
+  return useQuery<FeedSource[]>({
+    queryKey: ['feed-sources'],
+    queryFn: fetchFeedSources,
+    staleTime: Infinity,
   });
 }
 

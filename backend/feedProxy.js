@@ -9,6 +9,9 @@ const parser = new XMLParser({
   textNodeName: '#text',
   cdataPropName: '__cdata',
   trimValues: true,
+  // Entity expansion is capped at 1000 by fast-xml-parser v5 and feeds like
+  // ZeroHedge exceed it; we decode entities ourselves in unescapeHtml instead.
+  processEntities: false,
 });
 
 // Feed configurations with tiered refresh
@@ -16,27 +19,27 @@ const FEEDS = [
   // ═══════════════════════════════════════════
   // TIER 1 — 60s (Breaking / Hot)
   // ═══════════════════════════════════════════
-  { id: 'livemint-markets', name: 'Livemint Markets', url: 'https://www.livemint.com/rss/markets', category: 'Markets', ttl: 60_000, color: '#EC4327' },
-  { id: 'et-markets', name: 'ET Markets', url: 'https://economictimes.indiatimes.com/markets/rssfeeds/1977021501.cms', category: 'Markets', ttl: 60_000, color: '#1A73E8' },
+  { id: 'livemint-markets', name: 'Livemint Markets', url: 'https://www.livemint.com/rss/markets', fallbackUrl: 'https://news.google.com/rss/search?q=site:livemint.com/market+when:2d&hl=en-IN&gl=IN&ceid=IN:en', category: 'Markets', ttl: 60_000, color: '#EC4327' },
+  { id: 'et-markets', name: 'ET Markets', url: 'https://economictimes.indiatimes.com/markets/rssfeeds/1977021501.cms', fallbackUrl: 'https://news.google.com/rss/search?q=site:economictimes.indiatimes.com/markets+when:2d&hl=en-IN&gl=IN&ceid=IN:en', category: 'Markets', ttl: 60_000, color: '#1A73E8' },
   { id: 'biztoc', name: 'BizToc', url: 'https://biztoc.com/feed', category: 'Global', ttl: 60_000, color: '#FF6B35' },
 
   // ═══════════════════════════════════════════
   // TIER 2 — 120s (Active feeds)
   // ═══════════════════════════════════════════
-  { id: 'livemint-companies', name: 'Livemint Companies', url: 'https://www.livemint.com/rss/companies', category: 'Corporate', ttl: 120_000, color: '#EC4327' },
-  { id: 'et-stocks', name: 'ET Stocks', url: 'https://economictimes.indiatimes.com/markets/stocks/rssfeeds/2146842.cms', category: 'Stocks', ttl: 120_000, color: '#1A73E8' },
+  { id: 'livemint-companies', name: 'Livemint Companies', url: 'https://www.livemint.com/rss/companies', fallbackUrl: 'https://news.google.com/rss/search?q=site:livemint.com/companies+when:2d&hl=en-IN&gl=IN&ceid=IN:en', category: 'Corporate', ttl: 120_000, color: '#EC4327' },
+  { id: 'et-stocks', name: 'ET Stocks', url: 'https://economictimes.indiatimes.com/markets/stocks/rssfeeds/2146842.cms', fallbackUrl: 'https://news.google.com/rss/search?q=site:economictimes.indiatimes.com/markets/stocks+when:2d&hl=en-IN&gl=IN&ceid=IN:en', category: 'Stocks', ttl: 120_000, color: '#1A73E8' },
   { id: 'cnbc-business', name: 'CNBC Business', url: 'https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=10001147', category: 'Business', ttl: 120_000, color: '#005994' },
 
   // ═══════════════════════════════════════════
   // TIER 3 — 300s (Standard)
   // ═══════════════════════════════════════════
-  { id: 'livemint-news', name: 'Livemint News', url: 'https://www.livemint.com/rss/news', category: 'Headlines', ttl: 300_000, color: '#EC4327' },
-  { id: 'livemint-money', name: 'Livemint Money', url: 'https://www.livemint.com/rss/money', category: 'Money', ttl: 300_000, color: '#EC4327' },
+  { id: 'livemint-news', name: 'Livemint News', url: 'https://www.livemint.com/rss/news', fallbackUrl: 'https://news.google.com/rss/search?q=site:livemint.com+when:1d&hl=en-IN&gl=IN&ceid=IN:en', category: 'Headlines', ttl: 300_000, color: '#EC4327' },
+  { id: 'livemint-money', name: 'Livemint Money', url: 'https://www.livemint.com/rss/money', fallbackUrl: 'https://news.google.com/rss/search?q=site:livemint.com/money+when:2d&hl=en-IN&gl=IN&ceid=IN:en', category: 'Money', ttl: 300_000, color: '#EC4327' },
   { id: 'cnbc-world', name: 'CNBC World', url: 'https://www.cnbc.com/id/100727362/device/rss/rss.html', category: 'World', ttl: 300_000, color: '#005994' },
-  { id: 'cnbc-economy', name: 'CNBC Economy', url: 'https://www.cnbc.com/id/20910255/device/rss/rss.html', category: 'Economy', ttl: 300_000, color: '#005994' },
-  { id: 'etcfo-top', name: 'ET CFO', url: 'https://cfo.economictimes.indiatimes.com/rss/topstories', category: 'CFO', ttl: 300_000, color: '#0F766E' },
-  { id: 'etcfo-economy', name: 'ET CFO Economy', url: 'https://cfo.economictimes.indiatimes.com/rss/economy', category: 'Economy', ttl: 300_000, color: '#0F766E' },
-  { id: 'etcfo-corporate', name: 'ET CFO Corporate', url: 'https://cfo.economictimes.indiatimes.com/rss/corporate-finance', category: 'Corporate', ttl: 300_000, color: '#0F766E' },
+  { id: 'cnbc-economy', name: 'CNBC Economy', url: 'https://www.cnbc.com/id/20910258/device/rss/rss.html', category: 'Economy', ttl: 300_000, color: '#005994' },
+  { id: 'etcfo-top', name: 'ET CFO', url: 'https://cfo.economictimes.indiatimes.com/rss/topstories', fallbackUrl: 'https://news.google.com/rss/search?q=site:cfo.economictimes.indiatimes.com+when:7d&hl=en-IN&gl=IN&ceid=IN:en', category: 'CFO', ttl: 300_000, color: '#0F766E' },
+  { id: 'etcfo-economy', name: 'ET CFO Economy', url: 'https://cfo.economictimes.indiatimes.com/rss/economy', fallbackUrl: 'https://news.google.com/rss/search?q=site:cfo.economictimes.indiatimes.com+economy+when:7d&hl=en-IN&gl=IN&ceid=IN:en', category: 'Economy', ttl: 300_000, color: '#0F766E' },
+  { id: 'etcfo-corporate', name: 'ET CFO Corporate', url: 'https://cfo.economictimes.indiatimes.com/rss/corporate-finance', fallbackUrl: 'https://news.google.com/rss/search?q=site:cfo.economictimes.indiatimes.com+finance+when:7d&hl=en-IN&gl=IN&ceid=IN:en', category: 'Corporate', ttl: 300_000, color: '#0F766E' },
 
   // ═══════════════════════════════════════════
   // GEOPOLITICS / IRAN / MIDDLE EAST / DEFENSE
@@ -66,10 +69,10 @@ const FEEDS = [
   // ═══════════════════════════════════════════
   // INSTITUTIONAL INTELLIGENCE (Global Finance)
   // ═══════════════════════════════════════════
-  { id: 'gn-bloomberg', name: 'Bloomberg', url: 'https://news.google.com/rss/search?q=when:1d+source:"Bloomberg"&hl=en-US&gl=US&ceid=US:en', category: 'Markets', ttl: 300_000, color: '#F59E0B' },
-  { id: 'gn-reuters', name: 'Reuters', url: 'https://news.google.com/rss/search?q=when:1d+source:"Reuters"&hl=en-US&gl=US&ceid=US:en', category: 'Global', ttl: 300_000, color: '#F97316' },
-  { id: 'gn-wsj', name: 'Wall Street Journal', url: 'https://news.google.com/rss/search?q=when:1d+source:"The+Wall+Street+Journal"+OR+source:"WSJ"&hl=en-US&gl=US&ceid=US:en', category: 'Business', ttl: 300_000, color: '#06B6D4' },
-  { id: 'gn-ft', name: 'Financial Times', url: 'https://news.google.com/rss/search?q=when:1d+source:"Financial+Times"&hl=en-US&gl=US&ceid=US:en', category: 'Economy', ttl: 300_000, color: '#F472B6' },
+  { id: 'gn-bloomberg', name: 'Bloomberg', url: 'https://news.google.com/rss/search?q=site:bloomberg.com+when:1d&hl=en-US&gl=US&ceid=US:en', category: 'Markets', ttl: 300_000, color: '#F59E0B' },
+  { id: 'gn-reuters', name: 'Reuters', url: 'https://news.google.com/rss/search?q=site:reuters.com+when:1d&hl=en-US&gl=US&ceid=US:en', category: 'Global', ttl: 300_000, color: '#F97316' },
+  { id: 'gn-wsj', name: 'Wall Street Journal', url: 'https://news.google.com/rss/search?q=site:wsj.com+when:1d&hl=en-US&gl=US&ceid=US:en', category: 'Business', ttl: 300_000, color: '#06B6D4' },
+  { id: 'gn-ft', name: 'Financial Times', url: 'https://news.google.com/rss/search?q=site:ft.com+when:1d&hl=en-US&gl=US&ceid=US:en', category: 'Economy', ttl: 300_000, color: '#F472B6' },
   { id: 'zerohedge', name: 'ZeroHedge', url: 'https://feeds.feedburner.com/zerohedge/feed', category: 'Markets', ttl: 300_000, color: '#D97706' },
   { id: 'seeking-alpha', name: 'Seeking Alpha', url: 'https://seekingalpha.com/market_currents.xml', category: 'Stocks', ttl: 300_000, color: '#EA580C' },
 ];
@@ -149,20 +152,24 @@ function extractCategory(title, link, feedCategory) {
   return feedCategory || 'General';
 }
 
+const NAMED_ENTITIES = {
+  amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ',
+  mdash: '—', ndash: '–', hellip: '…', lsquo: '‘', rsquo: '’',
+  ldquo: '“', rdquo: '”', copy: '©', reg: '®', trade: '™', deg: '°',
+};
+
 function unescapeHtml(text) {
   if (!text) return '';
-  return text
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#039;/g, "'")
-    .replace(/&#39;/g, "'")
-    .replace(/&apos;/g, "'")
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&#160;/g, ' ')
-    .replace(/&mdash;/g, '—')
-    .replace(/&ndash;/g, '–');
+  let out = String(text);
+  // Two passes to handle double-encoded entities (e.g. "&amp;#039;")
+  for (let pass = 0; pass < 2; pass++) {
+    if (!out.includes('&')) break;
+    out = out
+      .replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCodePoint(parseInt(hex, 16)))
+      .replace(/&#(\d+);/g, (_, dec) => String.fromCodePoint(parseInt(dec, 10)))
+      .replace(/&([a-z]+);/gi, (m, name) => NAMED_ENTITIES[name.toLowerCase()] ?? m);
+  }
+  return out;
 }
 
 function cleanTitle(title) {
@@ -174,23 +181,35 @@ function cleanTitle(title) {
   return unescapeHtml(cleaned);
 }
 
+// Extract the link from an RSS <link> or Atom <link href="..."> element
+function extractLink(item) {
+  let link = item.link;
+  if (Array.isArray(link)) {
+    link = link.find(l => l?.['@_rel'] === 'alternate' || !l?.['@_rel']) || link[0];
+  }
+  if (link && typeof link === 'object' && link['@_href']) return link['@_href'];
+  return extractText(link);
+}
+
 function parseItems(xml, feedConfig) {
   try {
     const parsed = parser.parse(xml);
+    // RSS 2.0 (<rss><channel><item>) or Atom (<feed><entry>)
     const channel = parsed?.rss?.channel;
-    if (!channel) return [];
+    const atomFeed = parsed?.feed;
+    if (!channel && !atomFeed) return [];
 
-    let items = channel.item;
+    let items = channel ? channel.item : atomFeed.entry;
     if (!items) return [];
     if (!Array.isArray(items)) items = [items];
 
     return items.map((item, idx) => {
       const title = cleanTitle(item.title);
-      const description = extractText(item.description);
-      const link = extractText(item.link);
-      const pubDate = parseDate(item.pubDate);
-      const image = extractImage(item);
-      const category = extractCategory(item.title, item.link, feedConfig.category);
+      const description = extractText(item.description ?? item.summary ?? item.content);
+      const link = unescapeHtml(extractLink(item));
+      const pubDate = parseDate(item.pubDate ?? item.published ?? item.updated);
+      const image = unescapeHtml(extractImage(item)) || null;
+      const category = extractCategory(item.title, link, feedConfig.category);
       const companies = matchCompanies(title + ' ' + description);
 
       // Google News feeds include a <source> element with the original publisher
@@ -219,6 +238,23 @@ function parseItems(xml, feedConfig) {
   }
 }
 
+const FETCH_HEADERS = {
+  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+  'Accept': 'application/rss+xml, application/atom+xml, application/xml, text/xml, */*;q=0.8',
+  'Accept-Language': 'en-US,en;q=0.5',
+};
+
+async function fetchFeedUrl(url, feedConfig) {
+  const res = await fetch(url, {
+    headers: FETCH_HEADERS,
+    signal: AbortSignal.timeout(10_000),
+    redirect: 'follow',
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const xml = await res.text();
+  return parseItems(xml, feedConfig);
+}
+
 async function fetchFeed(feedConfig) {
   const now = Date.now();
   const cached = feedCache[feedConfig.id];
@@ -228,17 +264,16 @@ async function fetchFeed(feedConfig) {
   }
 
   try {
-    const res = await fetch(feedConfig.url, {
-      headers: {
-        'User-Agent': 'Newsdesk/1.0 (MrChartist)',
-        'Accept': 'application/rss+xml, application/xml, text/xml',
-      },
-      signal: AbortSignal.timeout(10_000),
-    });
-
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const xml = await res.text();
-    const items = parseItems(xml, feedConfig);
+    let items;
+    try {
+      items = await fetchFeedUrl(feedConfig.url, feedConfig);
+    } catch (primaryErr) {
+      // Some publishers (Livemint, ET) block non-residential IPs — fall back
+      // to a Google News query scoped to the same site/section if configured.
+      if (!feedConfig.fallbackUrl) throw primaryErr;
+      console.warn(`[Feed] ${feedConfig.id} primary failed (${primaryErr.message}), using fallback`);
+      items = await fetchFeedUrl(feedConfig.fallbackUrl, feedConfig);
+    }
 
     feedCache[feedConfig.id] = { items, ts: now };
     console.log(`[Feed] ${feedConfig.id}: ${items.length} items`);
@@ -249,13 +284,21 @@ async function fetchFeed(feedConfig) {
   }
 }
 
+const RETENTION_DAYS = 30;
+
 async function fetchAllFeeds() {
   // 1. Fetch fresh items from all RSS feeds
   const results = await Promise.allSettled(FEEDS.map(f => fetchFeed(f)));
+  const cutoff = Date.now() - RETENTION_DAYS * 24 * 60 * 60 * 1000;
   const freshItems = [];
   for (const result of results) {
     if (result.status === 'fulfilled') {
-      freshItems.push(...result.value);
+      // Skip items already past the retention window and items without a
+      // link (the link is the dedup primary key) so they aren't inserted
+      // and immediately pruned on every cycle.
+      freshItems.push(...result.value.filter(
+        item => item.link && new Date(item.pubDate).getTime() >= cutoff
+      ));
     }
   }
 
@@ -265,14 +308,14 @@ async function fetchAllFeeds() {
     console.log(`[DB] +${inserted} new articles | Total: ${getArticleCount()}`);
   }
 
-  // 3. Prune articles older than 30 days
-  const pruned = pruneArticles(30);
+  // 3. Prune articles older than the retention window
+  const pruned = pruneArticles(RETENTION_DAYS);
   if (pruned > 0) {
     console.log(`[DB] Pruned ${pruned} old articles`);
   }
 
-  // 4. Return all articles from the last 30 days, sorted by newest
-  return getRecentArticles(30);
+  // 4. Return all archived articles within retention, sorted by newest
+  return getRecentArticles(RETENTION_DAYS);
 }
 
 function getFeedConfigs() {

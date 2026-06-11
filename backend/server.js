@@ -4,6 +4,7 @@ import cors from 'cors';
 import { fetchAllFeeds, getFeedConfigs, FEEDS, fetchFeed } from './feedProxy.js';
 import { fetchStocks, fetchIndices, getTopMovers, getSectorPerformance } from './tvScanner.js';
 import { matchCompanies, getCompanyName } from './companyMap.js';
+import { getArticlesByCompany } from './db.js';
 
 const app = express();
 const PORT = 3001;
@@ -104,7 +105,6 @@ app.get('/api/company/:symbol', async (req, res) => {
     const companyName = getCompanyName(symbol);
 
     // Query company news directly from SQLite
-    const { getArticlesByCompany } = await import('./db.js');
     const news = getArticlesByCompany(symbol, 30);
 
     res.json({
@@ -123,8 +123,17 @@ app.get('/api/article-proxy', async (req, res) => {
   const url = req.query.url;
   if (!url) return res.status(400).json({ error: 'Missing url param' });
 
+  // Only proxy http(s) URLs — reject file:, data:, internal schemes etc.
+  let parsedUrl;
   try {
-    const response = await fetch(url, {
+    parsedUrl = new URL(url);
+    if (!['http:', 'https:'].includes(parsedUrl.protocol)) throw new Error('bad scheme');
+  } catch {
+    return res.status(400).json({ error: 'Invalid url param' });
+  }
+
+  try {
+    const response = await fetch(parsedUrl, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
@@ -138,14 +147,18 @@ app.get('/api/article-proxy', async (req, res) => {
 
     let html = await response.text();
 
+    // Strip <meta http-equiv="Content-Security-Policy"> tags — they survive
+    // proxying (unlike response headers) and block assets inside the iframe
+    html = html.replace(/<meta[^>]+http-equiv=["']?content-security-policy["']?[^>]*>/gi, '');
+
     // Inject a <base> tag so relative URLs resolve correctly
-    const baseTag = `<base href="${url}" target="_self">`;
+    // (response.url reflects the final URL after redirects)
+    const baseTag = `<base href="${response.url || url}" target="_self">`;
     html = html.replace(/<head([^>]*)>/i, `<head$1>${baseTag}`);
 
-    // Set permissive headers (strip iframe blocking)
+    // Serving from our own origin drops the publisher's X-Frame-Options /
+    // CSP headers, so the article can render inside the reader iframe
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
-    res.setHeader('X-Frame-Options', 'ALLOWALL');
-    res.removeHeader('Content-Security-Policy');
     res.send(html);
   } catch (err) {
     res.status(502).json({ error: `Failed to load article: ${err.message}` });

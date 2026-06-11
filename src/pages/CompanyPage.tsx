@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { ExternalLink, TrendingUp, TrendingDown, Maximize2, ShieldAlert } from 'lucide-react';
 import { cn, formatPrice, formatChange, formatMarketCap, formatVolume, getRecommendationLabel } from '@/lib/utils';
 import NewsFeed from '@/components/news/NewsFeed';
-import type { StockData, NewsFeedResponse } from '@/types/stock';
+import type { StockData } from '@/types/stock';
 
 async function fetchCompanyData(symbol: string) {
   const res = await fetch(`/api/company/${symbol}`);

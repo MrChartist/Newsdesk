@@ -2,6 +2,10 @@ import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { useNewsFeed, useFilteredNews } from '@/hooks/useNewsFeed';
 import HeroStats from '@/components/stats/HeroStats';
+import MarketTicker from '@/components/market/MarketTicker';
+import MarketPulse from '@/components/market/MarketPulse';
+import TopMovers from '@/components/market/TopMovers';
+import SectorHeatmap from '@/components/market/SectorHeatmap';
 import NewsFeed from '@/components/news/NewsFeed';
 import ArticleModal from '@/components/news/ArticleModal';
 import { CATEGORIES } from '@/data/categories';
@@ -50,6 +54,18 @@ export default function Home() {
     <div className="space-y-5 pb-12">
       {/* Quick Stats */}
       <HeroStats />
+
+      {/* Live Index Strip (NIFTY / BANKNIFTY / SENSEX) */}
+      <MarketTicker />
+
+      {/* Market Overview — sentiment, movers, sectors */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-4">
+        <MarketPulse />
+        <SectorHeatmap />
+        <div className="lg:col-span-2">
+          <TopMovers />
+        </div>
+      </div>
 
       {/* Category Filter Bar */}
       <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none -mx-1 px-1">
