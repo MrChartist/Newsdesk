@@ -25,8 +25,11 @@ Moves beyond temporary in-memory JSON storage by utilizing a robust `better-sqli
 *   **Deduplication**: Enforces strict URL uniqueness.
 *   **Auto-Pruning**: Automatically deletes stories older than 30 days to strictly manage disk space and maintain maximum query performance.
 
-### 4. 🛡️ In-Terminal Article Proxy bypass
-Features a custom backend proxy endpoint designed to strip restrictive `X-Frame-Options` headers from major news sites. This allows full articles to be rendered directly within a beautifully animated UI modal, ensuring you never have to leave the terminal or open a new tab to consume news.
+### 4. 🛡️ In-Terminal Article Reader
+A custom backend proxy serves articles from the app's own origin, dropping restrictive `X-Frame-Options` / CSP headers so full stories render directly inside a beautifully animated reader modal. Opaque Google News redirect links are resolved server-side to the real publisher URL before rendering, and any publisher that still blocks embedding or sits behind a paywall falls back gracefully to a clean "Read on source" card — you never hit a blank page.
+
+### 4b. 🔎 Search, Filter, Sort & Saved Articles
+A global control bar lets you search every archived headline (press `/` to focus), filter by source, sort by recency or publisher, and bookmark stories. Saved articles persist in `localStorage`, stay in sync across tabs, and survive backend pruning. The feed paginates with infinite scroll for snappy rendering even across thousands of articles.
 
 ### 5. 🎨 Institutional Dark-Mode UI
 *   **Topography**: Built on standard CSS grid layouts enforcing chronological (left-to-right, top-to-bottom) reading.

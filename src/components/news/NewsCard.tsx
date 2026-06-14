@@ -1,5 +1,7 @@
+import { Bookmark } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { NewsItem } from '@/types/news';
+import { useBookmarks } from '@/hooks/useBookmarks';
 import FeedSourceBadge from './FeedSourceBadge';
 import CategoryBadge from './CategoryBadge';
 import TimeAgo from './TimeAgo';
@@ -12,17 +14,40 @@ interface Props {
 
 export default function NewsCard({ item, onSelect }: Props) {
   const isNew = (Date.now() - new Date(item.pubDate).getTime()) < 5 * 60 * 1000;
+  const { isBookmarked, toggle } = useBookmarks();
+  const saved = isBookmarked(item.link);
 
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault();
     onSelect?.(item);
   };
 
+  const handleBookmark = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    toggle(item);
+  };
+
   return (
     <div
       onClick={handleClick}
-      className={cn("premium-card flex flex-col group cursor-pointer overflow-hidden", isNew && "row-new")}
+      className={cn("premium-card flex flex-col group cursor-pointer overflow-hidden relative", isNew && "row-new")}
     >
+      {/* Bookmark toggle */}
+      <button
+        onClick={handleBookmark}
+        title={saved ? 'Remove from saved' : 'Save article'}
+        aria-label={saved ? 'Remove from saved' : 'Save article'}
+        className={cn(
+          "absolute top-2.5 right-2.5 z-10 p-1.5 rounded-lg backdrop-blur-md ring-1 transition-all",
+          saved
+            ? "bg-primary/20 ring-primary/40 text-primary opacity-100"
+            : "bg-black/40 ring-white/10 text-white/80 opacity-0 group-hover:opacity-100 hover:text-primary"
+        )}
+      >
+        <Bookmark className={cn("w-3.5 h-3.5", saved && "fill-current")} />
+      </button>
+
       {item.image && (
         <div className="w-full h-40 overflow-hidden relative">
           <img

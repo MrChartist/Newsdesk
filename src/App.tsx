@@ -1,7 +1,7 @@
 import { Routes, Route } from 'react-router-dom';
 import TopBar from '@/components/layout/TopBar';
 import TickerBar from '@/components/layout/TickerBar';
-import IslandNavbar from '@/components/layout/IslandNavbar';
+import BackToTop from '@/components/layout/BackToTop';
 
 import Home from '@/pages/Home';
 import CompanyPage from '@/pages/CompanyPage';
@@ -26,6 +26,8 @@ export default function App() {
           <Route path="*" element={<Home />} />
         </Routes>
       </main>
+
+      <BackToTop />
     </div>
   );
 }

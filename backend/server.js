@@ -5,6 +5,7 @@ import { fetchAllFeeds, getFeedConfigs, FEEDS, fetchFeed } from './feedProxy.js'
 import { fetchStocks, fetchIndices, getTopMovers, getSectorPerformance } from './tvScanner.js';
 import { matchCompanies, getCompanyName } from './companyMap.js';
 import { getArticlesByCompany } from './db.js';
+import { isGoogleNewsUrl, resolveGoogleNewsUrl } from './gnewsResolver.js';
 
 const app = express();
 const PORT = 3001;
@@ -133,7 +134,18 @@ app.get('/api/article-proxy', async (req, res) => {
   }
 
   try {
-    const response = await fetch(parsedUrl, {
+    // Google News links are JS redirects that render blank in the iframe —
+    // resolve them to the real publisher URL before proxying.
+    let target = parsedUrl;
+    if (isGoogleNewsUrl(parsedUrl.href)) {
+      try {
+        target = new URL(await resolveGoogleNewsUrl(parsedUrl.href));
+      } catch (e) {
+        console.warn(`[Proxy] GN resolve failed: ${e.message}`);
+      }
+    }
+
+    const response = await fetch(target, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',

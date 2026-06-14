@@ -15,7 +15,7 @@ export default function CategoryPage() {
   const Icon = meta.icon;
   const [selectedArticle, setSelectedArticle] = useState<NewsItem | null>(null);
 
-  const { data, isLoading } = useNewsFeed();
+  const { data, isLoading, isError, refetch } = useNewsFeed();
   const filteredItems = useFilteredNews(data?.items, { category: categoryId });
 
   const sortedItems = useMemo(() => {
@@ -67,7 +67,11 @@ export default function CategoryPage() {
       <NewsFeed
         items={sortedItems}
         isLoading={isLoading}
+        isError={isError}
+        onRetry={() => refetch()}
         onSelectArticle={setSelectedArticle}
+        emptyTitle={`No ${meta.label} articles yet`}
+        emptyHint="Newsdesk archives stories as they arrive — check back shortly."
       />
 
       <ArticleModal
