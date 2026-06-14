@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, ExternalLink, Clock, Copy, Check, Maximize2, Minimize2, Loader2 } from 'lucide-react';
+import { X, ExternalLink, Clock, Copy, Check, Loader2, Bookmark } from 'lucide-react';
 import { cn, timeAgo } from '@/lib/utils';
 import type { NewsItem } from '@/types/news';
+import { useBookmarks } from '@/hooks/useBookmarks';
 import CategoryBadge from './CategoryBadge';
 import FeedSourceBadge from './FeedSourceBadge';
 import CompanyMentionTag from '../company/CompanyMentionTag';
@@ -12,16 +13,39 @@ interface Props {
   onClose: () => void;
 }
 
+type ReaderStatus = 'loading' | 'ready' | 'error';
+
 export default function ArticleModal({ item, onClose }: Props) {
   const [copied, setCopied] = useState(false);
-  const [iframeLoaded, setIframeLoaded] = useState(false);
-  const [iframeError, setIframeError] = useState(false);
+  const [status, setStatus] = useState<ReaderStatus>('loading');
+  const [srcDoc, setSrcDoc] = useState('');
+  const { isBookmarked, toggle } = useBookmarks();
+  const saved = item ? isBookmarked(item.link) : false;
 
-  // Reset states when item changes
+  // Fetch the proxied article HTML so we can detect failures (a 403/502 body
+  // would otherwise "load" in the iframe and show raw JSON instead of the
+  // graceful fallback). On success we render it via srcDoc.
   useEffect(() => {
-    setIframeLoaded(false);
-    setIframeError(false);
     setCopied(false);
+    if (!item) return;
+
+    setStatus('loading');
+    setSrcDoc('');
+    const ctrl = new AbortController();
+
+    fetch(`/api/article-proxy?url=${encodeURIComponent(item.link)}`, { signal: ctrl.signal })
+      .then(async (res) => {
+        const ct = res.headers.get('content-type') || '';
+        if (!res.ok || !ct.includes('text/html')) throw new Error(`status ${res.status}`);
+        const html = await res.text();
+        setSrcDoc(html);
+        setStatus('ready');
+      })
+      .catch((err) => {
+        if (err.name !== 'AbortError') setStatus('error');
+      });
+
+    return () => ctrl.abort();
   }, [item?.link]);
 
   // Close on Escape
@@ -93,6 +117,16 @@ export default function ArticleModal({ item, onClose }: Props) {
                 ))}
                 <div className="w-px h-5 bg-white/10 mx-1" />
                 <button
+                  onClick={() => toggle(item)}
+                  className={cn(
+                    "p-1.5 rounded-lg hover:bg-white/10 transition-colors",
+                    saved ? "text-primary" : "text-muted-foreground hover:text-foreground"
+                  )}
+                  title={saved ? 'Remove from saved' : 'Save article'}
+                >
+                  <Bookmark className={cn("w-3.5 h-3.5", saved && "fill-current")} />
+                </button>
+                <button
                   onClick={handleCopy}
                   className="p-1.5 rounded-lg hover:bg-white/10 transition-colors text-muted-foreground hover:text-foreground"
                   title="Copy link"
@@ -117,10 +151,10 @@ export default function ArticleModal({ item, onClose }: Props) {
               </div>
             </div>
 
-            {/* Article iframe — full embedded reader */}
+            {/* Article reader */}
             <div className="flex-1 relative bg-white">
               {/* Loading spinner */}
-              {!iframeLoaded && !iframeError && (
+              {status === 'loading' && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-card z-10">
                   <Loader2 className="w-8 h-8 text-primary animate-spin mb-3" />
                   <p className="text-sm text-muted-foreground">Loading article...</p>
@@ -128,8 +162,8 @@ export default function ArticleModal({ item, onClose }: Props) {
                 </div>
               )}
 
-              {/* Fallback if iframe blocked */}
-              {iframeError && (
+              {/* Graceful fallback when the publisher blocks embedding/paywalls */}
+              {status === 'error' && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-card z-10 px-8">
                   <div className="max-w-xl text-center">
                     {item.image && (
@@ -141,7 +175,10 @@ export default function ArticleModal({ item, onClose }: Props) {
                       {' • '}
                       {new Date(item.pubDate).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
                     </p>
-                    <p className="text-foreground/80 leading-relaxed mb-8">{item.description}</p>
+                    <p className="text-foreground/80 leading-relaxed mb-6">{item.description}</p>
+                    <p className="text-xs text-muted-foreground mb-8">
+                      This publisher blocks in-terminal reading or requires a subscription.
+                    </p>
                     <a
                       href={item.link}
                       target="_blank"
@@ -155,15 +192,15 @@ export default function ArticleModal({ item, onClose }: Props) {
                 </div>
               )}
 
-              <iframe
-                key={item.link}
-                src={`/api/article-proxy?url=${encodeURIComponent(item.link)}`}
-                className="w-full h-full border-0"
-                sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
-                referrerPolicy="no-referrer"
-                onLoad={() => setIframeLoaded(true)}
-                onError={() => setIframeError(true)}
-              />
+              {status === 'ready' && (
+                <iframe
+                  key={item.link}
+                  srcDoc={srcDoc}
+                  className="w-full h-full border-0"
+                  sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
+                  referrerPolicy="no-referrer"
+                />
+              )}
             </div>
           </motion.div>
         </>
