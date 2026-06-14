@@ -31,6 +31,14 @@ A custom backend proxy serves articles from the app's own origin, dropping restr
 ### 4b. 🔎 Search, Filter, Sort & Saved Articles
 A global control bar lets you search every archived headline (press `/` to focus), filter by source, sort by recency or publisher, and bookmark stories. Saved articles persist in `localStorage`, stay in sync across tabs, and survive backend pruning. The feed paginates with infinite scroll for snappy rendering even across thousands of articles.
 
+### 4c. 📊 Markets, Sectors & Watchlist
+The full ~500-stock NSE universe is now browsable, not just summarised:
+*   **Screener (`/markets`)**: A sortable, filterable table of every tracked stock — sort by price, change, 1-month performance, volume, market cap, RSI, or technical signal; filter by sector or search by name.
+*   **Sector Rotation (`/sectors` → `/sector/:name`)**: Every sector is scored for average move, advance/decline breadth, market-cap weight, and bullish-signal share. Drill into a sector to see its leaders & laggards, full constituent table, and — uniquely — **sector-wide news** auto-joined from articles mentioning any company in that sector.
+*   **Watchlist (`/watchlist`)**: Star any stock from the screener, a sector, or a company page. Watched symbols persist in `localStorage`, sync across tabs, and power a dedicated view that pairs live quotes with the latest news mentioning those holdings.
+*   **Richer company pages**: Week/month/quarter performance, RSI & ADX momentum reads, a sector-peer strip, a one-tap watchlist toggle, and a deep link to the interactive TradingView chart.
+*   **Mobile navigation**: A bottom tab bar brings the dashboard, screener, sectors, watchlist, and topics to small screens.
+
 ### 5. 🎨 Institutional Dark-Mode UI
 *   **Topography**: Built on standard CSS grid layouts enforcing chronological (left-to-right, top-to-bottom) reading.
 *   **Glassmorphism**: Sleek floating navbars and blur effects. 

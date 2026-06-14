@@ -2,9 +2,9 @@
 import express from 'express';
 import cors from 'cors';
 import { fetchAllFeeds, getFeedConfigs, FEEDS, fetchFeed } from './feedProxy.js';
-import { fetchStocks, fetchIndices, getTopMovers, getSectorPerformance } from './tvScanner.js';
+import { fetchStocks, fetchIndices, getTopMovers, getSectorPerformance, getSectorDetail } from './tvScanner.js';
 import { matchCompanies, getCompanyName } from './companyMap.js';
-import { getArticlesByCompany } from './db.js';
+import { getArticlesByCompany, getArticlesByCompanies } from './db.js';
 import { isGoogleNewsUrl, resolveGoogleNewsUrl } from './gnewsResolver.js';
 
 const app = express();
@@ -79,6 +79,22 @@ app.get('/api/market/sectors', async (req, res) => {
     const stocks = await fetchStocks();
     const sectors = getSectorPerformance(stocks);
     res.json(sectors);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── Sector Detail (constituents + leaders + sector-wide news) ──
+app.get('/api/market/sector/:name', async (req, res) => {
+  try {
+    const stocks = await fetchStocks();
+    const name = req.params.name;
+    const detail = getSectorDetail(stocks, name);
+    if (!detail) return res.status(404).json({ error: `Sector "${name}" not found` });
+
+    // Join sector → constituent symbols → their archived news
+    const news = getArticlesByCompanies(detail.stocks, 30);
+    res.json({ ...detail, news: { count: news.length, items: news.slice(0, 60) } });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

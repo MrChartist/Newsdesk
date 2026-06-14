@@ -5,7 +5,7 @@ import NewsCardSkeleton from './NewsCardSkeleton';
 
 interface Props {
   items: NewsItem[];
-  isLoading: boolean;
+  isLoading?: boolean;
   onSelectArticle?: (item: NewsItem) => void;
   isError?: boolean;
   onRetry?: () => void;
@@ -15,7 +15,7 @@ interface Props {
 
 export default function NewsFeed({
   items,
-  isLoading,
+  isLoading = false,
   onSelectArticle,
   isError,
   onRetry,

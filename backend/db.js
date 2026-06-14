@@ -124,6 +124,22 @@ export function getArticlesByCompany(symbol, days = 30) {
   return rows.map(rowToArticle);
 }
 
+/** Get articles mentioning ANY of the given company symbols (e.g. a whole sector). */
+export function getArticlesByCompanies(symbols, days = 30, limit = 150) {
+  if (!symbols || symbols.length === 0) return [];
+  const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+  const clause = symbols.map(() => 'companies LIKE ?').join(' OR ');
+  const stmt = db.prepare(`
+    SELECT * FROM articles
+    WHERE (${clause}) AND pubDate >= ?
+    ORDER BY pubDate DESC
+    LIMIT ${Number(limit)}
+  `);
+  const params = symbols.map(s => `%"${s}"%`);
+  params.push(cutoff);
+  return stmt.all(...params).map(rowToArticle);
+}
+
 /** Prune articles older than N days. Returns count deleted. */
 export function pruneArticles(days = 30) {
   const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
