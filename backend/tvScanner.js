@@ -140,24 +140,67 @@ function getTopMovers(stocks) {
   return {
     gainers: sorted.slice(0, 10),
     losers: sorted.slice(-10).reverse(),
+    mostActive: getMostActive(stocks),
+  };
+}
+
+/** Top stocks by traded volume — proxy for where the action is today. */
+function getMostActive(stocks) {
+  return Object.values(stocks)
+    .filter(s => s.volume != null && s.price != null)
+    .sort((a, b) => (b.volume || 0) - (a.volume || 0))
+    .slice(0, 10);
+}
+
+/** Roll a list of stocks into a single sector summary (breadth, cap, sentiment). */
+function summarizeSector(name, list) {
+  const valued = list.filter(s => s.change != null);
+  const advancers = valued.filter(s => s.change > 0).length;
+  const decliners = valued.filter(s => s.change < 0).length;
+  const totalChange = valued.reduce((sum, s) => sum + s.change, 0);
+  const marketCap = list.reduce((sum, s) => sum + (s.marketCap || 0), 0);
+  const bullish = list.filter(s => s.recommendAll != null && s.recommendAll >= 0.1).length;
+  const byChange = [...valued].sort((a, b) => b.change - a.change);
+
+  return {
+    sector: name,
+    avgChange: valued.length ? totalChange / valued.length : 0,
+    count: list.length,
+    advancers,
+    decliners,
+    marketCap,
+    bullishPct: list.length ? (bullish / list.length) * 100 : 0,
+    topStock: byChange[0] ? { symbol: byChange[0].symbol, change: byChange[0].change } : null,
+    bottomStock: byChange.length ? { symbol: byChange[byChange.length - 1].symbol, change: byChange[byChange.length - 1].change } : null,
+    stocks: list.map(s => s.symbol),
   };
 }
 
 function getSectorPerformance(stocks) {
-  const sectors = {};
+  const groups = {};
   for (const s of Object.values(stocks)) {
-    if (!s.sector || s.change == null) continue;
-    if (!sectors[s.sector]) {
-      sectors[s.sector] = { sector: s.sector, totalChange: 0, count: 0, stocks: [] };
-    }
-    sectors[s.sector].totalChange += s.change;
-    sectors[s.sector].count += 1;
-    sectors[s.sector].stocks.push(s.symbol);
+    if (!s.sector) continue;
+    (groups[s.sector] ||= []).push(s);
   }
-  return Object.values(sectors).map(sec => ({
-    ...sec,
-    avgChange: sec.count > 0 ? sec.totalChange / sec.count : 0,
-  })).sort((a, b) => b.avgChange - a.avgChange);
+  return Object.entries(groups)
+    .map(([name, list]) => summarizeSector(name, list))
+    .sort((a, b) => b.avgChange - a.avgChange);
+}
+
+/** Full breakdown for a single sector: summary + leaders/laggards + constituents. */
+function getSectorDetail(stocks, name) {
+  const list = Object.values(stocks).filter(s => s.sector === name);
+  if (!list.length) return null;
+
+  const byChange = list.filter(s => s.change != null).sort((a, b) => b.change - a.change);
+  const constituents = [...list].sort((a, b) => (b.marketCap || 0) - (a.marketCap || 0));
+
+  return {
+    ...summarizeSector(name, list),
+    leaders: byChange.slice(0, 5),
+    laggards: byChange.slice(-5).reverse(),
+    constituents,
+  };
 }
 
 function getRecommendationLabel(value) {
@@ -169,4 +212,4 @@ function getRecommendationLabel(value) {
   return 'Strong Sell';
 }
 
-export { fetchStocks, fetchIndices, getTopMovers, getSectorPerformance, getRecommendationLabel };
+export { fetchStocks, fetchIndices, getTopMovers, getMostActive, getSectorPerformance, getSectorDetail, getRecommendationLabel };

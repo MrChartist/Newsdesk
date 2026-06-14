@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import type { StockData, IndexData, TopMovers, SectorPerf } from '@/types/stock';
+import type { StockData, IndexData, TopMovers, SectorPerf, SectorDetail } from '@/types/stock';
 
 async function fetchAllStocks(): Promise<{ count: number; stocks: Record<string, StockData> }> {
   const res = await fetch('/api/market/all');
@@ -22,6 +22,12 @@ async function fetchMovers(): Promise<TopMovers> {
 async function fetchSectors(): Promise<SectorPerf[]> {
   const res = await fetch('/api/market/sectors');
   if (!res.ok) throw new Error('Failed to fetch sectors');
+  return res.json();
+}
+
+async function fetchSectorDetail(name: string): Promise<SectorDetail> {
+  const res = await fetch(`/api/market/sector/${encodeURIComponent(name)}`);
+  if (!res.ok) throw new Error('Failed to fetch sector');
   return res.json();
 }
 
@@ -58,6 +64,16 @@ export function useSectors(refetchInterval = 120000) {
     queryFn: fetchSectors,
     refetchInterval,
     staleTime: 60000,
+  });
+}
+
+export function useSectorDetail(name: string | undefined, refetchInterval = 60000) {
+  return useQuery({
+    queryKey: ['sector-detail', name],
+    queryFn: () => fetchSectorDetail(name!),
+    enabled: !!name,
+    refetchInterval,
+    staleTime: 30000,
   });
 }
 

@@ -35,12 +35,30 @@ export interface IndexData {
 export interface TopMovers {
   gainers: StockData[];
   losers: StockData[];
+  mostActive?: StockData[];
+}
+
+export interface SectorStockRef {
+  symbol: string;
+  change: number;
 }
 
 export interface SectorPerf {
   sector: string;
   avgChange: number;
   count: number;
-  totalChange: number;
+  advancers: number;
+  decliners: number;
+  marketCap: number;
+  bullishPct: number;
+  topStock: SectorStockRef | null;
+  bottomStock: SectorStockRef | null;
   stocks: string[];
+}
+
+export interface SectorDetail extends SectorPerf {
+  leaders: StockData[];
+  laggards: StockData[];
+  constituents: StockData[];
+  news: { count: number; items: import('./news').NewsItem[] };
 }
