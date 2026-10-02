@@ -1,5 +1,3 @@
-// Newsdesk SQLite Database — persistent article archive
-import Database from 'better-sqlite3';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
@@ -13,7 +11,30 @@ if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
-const db = new Database(DB_PATH);
+let db;
+try {
+  const { default: Database } = await import('better-sqlite3');
+  db = new Database(DB_PATH);
+} catch {
+  const { DatabaseSync } = await import('node:sqlite');
+  db = new DatabaseSync(DB_PATH);
+  if (!db.pragma) {
+    db.pragma = (sql) => db.exec(`PRAGMA ${sql}`);
+  }
+  if (!db.transaction) {
+    db.transaction = (fn) => (...args) => {
+      db.exec('BEGIN');
+      try {
+        const res = fn(...args);
+        db.exec('COMMIT');
+        return res;
+      } catch (err) {
+        try { db.exec('ROLLBACK'); } catch {}
+        throw err;
+      }
+    };
+  }
+}
 
 // Performance pragmas
 db.pragma('journal_mode = WAL');

@@ -8,6 +8,7 @@ import TabBar from '@/components/layout/TabBar';
 import BackToTop from '@/components/layout/BackToTop';
 import CommandPalette from '@/components/layout/CommandPalette';
 import ShortcutsSheet from '@/components/layout/ShortcutsSheet';
+import Footer from '@/components/layout/Footer';
 import Toaster from '@/components/ui/Toaster';
 
 import Home from '@/pages/Home';
@@ -18,6 +19,7 @@ import TopicPage from '@/pages/TopicPage';
 import SourcesPage from '@/pages/SourcesPage';
 import SourcePage from '@/pages/SourcePage';
 import CompanyPage from '@/pages/CompanyPage';
+import StocksPage from '@/pages/StocksPage';
 
 export default function App() {
   const { pathname } = useLocation();
@@ -44,6 +46,7 @@ export default function App() {
           <div key={pathname} className="route-in">
           <Routes>
             <Route path="/" element={<Home />} />
+            <Route path="/stocks" element={<StocksPage />} />
             <Route path="/search" element={<SearchPage />} />
             <Route path="/saved" element={<SavedPage />} />
             <Route path="/topics" element={<TopicsPage />} />
@@ -52,12 +55,15 @@ export default function App() {
             <Route path="/source/:id" element={<SourcePage />} />
             <Route path="/company/:symbol" element={<CompanyPage />} />
             {/* legacy URLs */}
+            <Route path="/markets" element={<Navigate to="/stocks" replace />} />
+            <Route path="/screener" element={<Navigate to="/stocks" replace />} />
             <Route path="/categories" element={<Navigate to="/topics" replace />} />
             <Route path="/category/:id" element={<LegacyTopic />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
           </div>
         </main>
+        <Footer />
       </div>
       <TabBar />
       <BackToTop />

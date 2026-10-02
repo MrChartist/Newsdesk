@@ -1,4 +1,4 @@
-import { Newspaper, TrendingUp, Building2, Globe, DollarSign, Landmark, Bitcoin, Wheat, Briefcase, Heart, Cpu, Shield, Factory, Users, Swords, Target, Flag, Bomb, Radio } from 'lucide-react';
+import { Newspaper, TrendingUp, Building2, Globe, IndianRupee, Landmark, Bitcoin, Wheat, Briefcase, Heart, Cpu, Shield, Factory, Users, Swords, Target, Flag, Bomb, Radio } from 'lucide-react';
 
 export interface Category {
   id: string;
@@ -26,11 +26,11 @@ export const CATEGORIES: Category[] = [
   { id: 'Global', label: 'Global', icon: Globe, color: '#FF6B35', bgColor: 'rgba(255, 107, 53, 0.15)' },
 
   // ── Finance Detail ──
-  { id: 'Money', label: 'Money', icon: DollarSign, color: '#00C7BE', bgColor: 'rgba(20, 184, 166, 0.15)' },
+  { id: 'Money', label: 'Money', icon: IndianRupee, color: '#00C7BE', bgColor: 'rgba(20, 184, 166, 0.15)' },
   { id: 'IPO', label: 'IPO', icon: TrendingUp, color: '#BF5AF2', bgColor: 'rgba(168, 85, 247, 0.15)' },
   { id: 'Crypto', label: 'Crypto', icon: Bitcoin, color: '#FF9F0A', bgColor: 'rgba(245, 158, 11, 0.15)' },
   { id: 'Commodities', label: 'Commodities', icon: Wheat, color: '#FFB340', bgColor: 'rgba(217, 119, 6, 0.15)' },
-  { id: 'Forex', label: 'Forex', icon: DollarSign, color: '#0A84FF', bgColor: 'rgba(14, 165, 233, 0.15)' },
+  { id: 'Forex', label: 'Forex', icon: Landmark, color: '#0A84FF', bgColor: 'rgba(14, 165, 233, 0.15)' },
 
   // ── Other ──
   { id: 'Tech', label: 'Tech', icon: Cpu, color: '#32ADE6', bgColor: 'rgba(6, 182, 212, 0.15)' },

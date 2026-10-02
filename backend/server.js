@@ -2,7 +2,8 @@
 import express from 'express';
 import cors from 'cors';
 import { fetchAllFeeds, getFeedConfigs, FEEDS, fetchFeed } from './feedProxy.js';
-import { COMPANY_MAP, getCompanyName } from './companyMap.js';
+import { COMPANY_MAP, getCompanyName, getAllCompanies } from './companyMap.js';
+import { getInstruments, getInstrument, getSectors } from './instruments.js';
 import { getArticlesByCompany } from './db.js';
 import { isGoogleNewsUrl, resolveGoogleNewsUrl } from './gnewsResolver.js';
 import { safeGet } from './safeFetch.js';
@@ -46,17 +47,31 @@ app.get('/api/feeds/:sourceId', async (req, res) => {
   }
 });
 
-// ─── Companies (news-only) ───────────────────
-// Symbol → display name directory, used to label company mentions in the UI.
+// ─── Preloaded Instruments & Companies Directory ──
 app.get('/api/companies', (req, res) => {
-  res.json(Object.keys(COMPANY_MAP).map((symbol) => ({ symbol, name: getCompanyName(symbol) })));
+  res.json(getAllCompanies());
+});
+
+app.get('/api/stocks', (req, res) => {
+  const instruments = getInstruments();
+  res.json({
+    count: instruments.length,
+    stocks: instruments,
+    sectors: getSectors(),
+  });
 });
 
 app.get('/api/company/:symbol', (req, res) => {
   try {
     const symbol = req.params.symbol.toUpperCase();
+    const instrument = getInstrument(symbol);
     const news = getArticlesByCompany(symbol, 30);
-    res.json({ symbol, name: getCompanyName(symbol), news: { count: news.length, items: news.slice(0, 80) } });
+    res.json({
+      symbol,
+      name: instrument?.name || getCompanyName(symbol),
+      instrument,
+      news: { count: news.length, items: news.slice(0, 80) },
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -153,6 +168,7 @@ function remember(url, data) {
 app.listen(PORT, () => {
   console.log(`\n  🗞️  Newsdesk Backend running on http://localhost:${PORT}`);
   console.log(`  📡  ${FEEDS.length} RSS feeds configured (incl. geopolitics, Iran, Middle East, defense)`);
+  console.log(`  📊  Preloaded instruments loaded\n`);
 
   // Warm up caches
   fetchAllFeeds().then(items => console.log(`  ✅  Initial feed load: ${items.length} articles`));

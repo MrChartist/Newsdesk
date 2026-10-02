@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ChevronLeft, Search, RefreshCw, Sun, Moon, Monitor } from 'lucide-react';
+import { ChevronLeft, Search, RefreshCw, Sun, Moon, Monitor, ExternalLink } from 'lucide-react';
 import BrandMark from './BrandMark';
 import { titleFor, ROOT_PATHS } from './nav';
 import { openCommandPalette } from './CommandPalette';
@@ -47,7 +47,17 @@ export default function Toolbar() {
           <span className="hidden items-center gap-1 sm:inline-flex"><kbd className="kbd">{isMac ? '⌘' : 'Ctrl'}</kbd><kbd className="kbd">K</kbd></span>
         </button>
 
-        <div className="flex items-center gap-1 lg:ml-auto">
+        <div className="flex items-center gap-2 lg:ml-auto">
+          <a
+            href="https://mrchartist.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hidden md:inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-full bg-[var(--mat-fill-2)] text-muted-foreground hover:text-primary transition-colors border border-[var(--mat-separator)]"
+            title="Visit mrchartist.com"
+          >
+            <span>mrchartist.com</span>
+            <ExternalLink className="h-3 w-3 opacity-60" />
+          </a>
           <button onClick={() => refetch()} className="icon-btn" aria-label="Refresh news" title={dataUpdatedAt ? `Refresh · updated ${ago(dataUpdatedAt)}` : 'Refresh'}>
             <RefreshCw className={cn('h-[18px] w-[18px]', isFetching && 'animate-spin')} />
           </button>

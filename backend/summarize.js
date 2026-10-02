@@ -156,7 +156,9 @@ export function extractFigures(sentences, limit = 5) {
   const out = [];
   for (const s of sentences) {
     for (const m of s.matchAll(FIGURE_RE)) {
-      const f = m[0].replace(/\s+/g, ' ').trim().replace(/[.,]$/, '');
+      let f = m[0].replace(/\s+/g, ' ').trim().replace(/[.,]$/, '');
+      // Format Indian currency representations to ₹
+      f = f.replace(/^(?:Rs\.?\s?|INR\s?)/i, '₹');
       const k = f.toLowerCase();
       if (!seen.has(k) && f.length >= 2) { seen.add(k); out.push(f); }
       if (out.length === limit) return out;

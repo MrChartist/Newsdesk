@@ -17,20 +17,6 @@
   font-display: swap;
   src: url('/fonts/inter-var.woff2') format('woff2');
 }
-@font-face {
-  font-family: 'Plus Jakarta Sans';
-  font-style: normal;
-  font-weight: 200 800;
-  font-display: swap;
-  src: url('/fonts/plus-jakarta-sans-var.woff2') format('woff2');
-}
-@font-face {
-  font-family: 'DM Serif Display';
-  font-style: italic;
-  font-weight: 400;
-  font-display: swap;
-  src: url('/fonts/dm-serif-display-italic.woff2') format('woff2');
-}
 
 @layer base {
   /* ── Light (warm paper) — default token set ─────────────────────────── */
@@ -107,8 +93,8 @@
     --shadow-3: 0 2px 4px #1f19140d, 0 18px 48px #1f19141f;
     --shadow-float: 0 4px 12px #1f191414, 0 30px 80px #1f191433;
     --spec-top: inset 0 1px 0 #ffffffe6;
-    --wall-a: #e0865229;
-    --wall-b: #0a84ff12;
+    --wall-a: #0ea5e920;
+    --wall-b: #6366f11a;
 
     --radius: 1rem;
     --r-xs: 8px;
@@ -190,8 +176,8 @@
     --shadow-3: 0 2px 4px #0006, 0 22px 56px #00000080;
     --shadow-float: 0 6px 16px #0006, 0 36px 90px #0009;
     --spec-top: inset 0 1px 0 #ffffff12;
-    --wall-a: #d379451a;
-    --wall-b: #0a84ff14;
+    --wall-a: #0ea5e91c;
+    --wall-b: #6366f11c;
     color-scheme: dark;
   }
 }
@@ -217,8 +203,8 @@
     overscroll-behavior-y: none;
   }
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
-    letter-spacing: -0.015em;
+    font-family: 'Outfit', 'Inter', system-ui, sans-serif;
+    letter-spacing: -0.02em;
   }
   ::selection { background: hsl(var(--primary) / 0.28); }
   :focus-visible {
@@ -353,11 +339,11 @@
     color: hsl(var(--muted-foreground));
   }
   .large-title {
-    font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+    font-family: 'Outfit', 'Inter', sans-serif;
     font-size: clamp(1.75rem, 1.3rem + 1.6vw, 2.5rem);
     font-weight: 800; letter-spacing: -0.03em; line-height: 1.1;
   }
-  .brand-serif { font-family: 'DM Serif Display', Georgia, serif; font-style: italic; letter-spacing: -0.01em; }
+  .brand-serif { font-family: 'Outfit', system-ui, sans-serif; font-weight: 600; letter-spacing: -0.01em; }
 
   /* Sidebar rows (macOS 26 source list) */
   .side-item {
@@ -376,10 +362,10 @@
 
 @layer utilities {
   .tnum { font-variant-numeric: tabular-nums; font-feature-settings: 'tnum', 'cv11'; }
-  .font-display { font-family: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif; }
+  .font-display { font-family: 'Outfit', 'Inter', system-ui, sans-serif; }
   .font-body { font-family: 'Inter', system-ui, sans-serif; }
-  .font-serif-accent, .font-brand { font-family: 'DM Serif Display', Georgia, serif; font-style: italic; }
-  .font-mono-data { font-family: 'Inter', system-ui, sans-serif; font-variant-numeric: tabular-nums; font-feature-settings: 'tnum', 'cv11'; }
+  .font-serif-accent, .font-brand { font-family: 'Outfit', system-ui, sans-serif; }
+  .font-mono-data { font-family: 'JetBrains Mono', 'Inter', monospace; font-variant-numeric: tabular-nums; }
 
   .text-profit { color: hsl(var(--profit)); }
   .text-loss { color: hsl(var(--loss)); }

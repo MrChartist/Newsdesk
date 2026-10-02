@@ -13,9 +13,9 @@ export default {
     extend: {
       fontFamily: {
         sans: ["Inter", "system-ui", "-apple-system", "sans-serif"],
-        display: ["Plus Jakarta Sans", "Inter", "system-ui", "sans-serif"],
-        mono: ["Inter", "system-ui", "sans-serif"],
-        brand: ["DM Serif Display", "Georgia", "serif"],
+        display: ["Outfit", "Inter", "system-ui", "sans-serif"],
+        mono: ["JetBrains Mono", "ui-monospace", "SFMono-Regular", "Menlo", "monospace"],
+        brand: ["Outfit", "system-ui", "sans-serif"],
       },
       colors: {
         border: c("border"),

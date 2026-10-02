@@ -1,0 +1,53 @@
+POLYFORM NONCOMMERCIAL LICENSE 1.0.0
+Copyright (c) 2026 Mr. Chartist (Rohit Singh). All rights reserved.
+
+1. Purpose
+The Licensor grants you the rights in this license for noncommercial purposes only. 
+Commercial use is strictly prohibited without prior written authorization from the Licensor.
+
+2. Definitions
+- "Commercial purposes" means any use or application of this software, or any part thereof,
+  directed towards commercial advantage or monetary compensation. This includes, without
+  limitation, using the software to provide a commercial service, incorporating the software
+  into a paid product or service, redistributing the software for a fee, using it for commercial
+  algorithmic trading or proprietary fund management, or displaying paid advertisements on
+  any deployment of the software.
+- "Noncommercial purposes" means personal study, research, education, non-profit community use,
+  and private non-monetized experimentation.
+- "Licensor" means Mr. Chartist (Rohit Singh).
+- "Software" means the Newsdesk codebase, designs, documentation, and associated assets.
+
+3. Grant of Rights
+Subject to the terms and conditions of this license, the Licensor hereby grants to any person
+obtaining a copy of this software and associated documentation files the free right to:
+- Use, study, copy, and modify the software for Noncommercial Purposes only.
+- Distribute verbatim copies of the software for Noncommercial Purposes only, provided that:
+  (a) This LICENSE file and all copyright notices are preserved intact.
+  (b) All Mr. Chartist branding and attribution remain clearly displayed.
+  (c) Recipients are bound by the same noncommercial terms.
+
+4. Commercial Restrictions
+- You may NOT sell, license, rent, lease, or monetize this software in any form.
+- You may NOT use this software as the backend or frontend for any paid newsletter, advisory
+  service, commercial portal, API subscription, or fee-charging product.
+- For commercial licensing inquiries, contact: legal@mrchartist.com or business@mrchartist.com.
+
+5. Attribution & Integrity
+Any public deployment or redistribution of this software or substantial portions thereof must
+conspicuously display:
+- "Powered by Newsdesk — an open-source project by Mr. Chartist"
+- A link back to https://mrchartist.com and the repository.
+
+6. Regulatory & Financial Disclaimer
+THIS SOFTWARE IS AN OPEN-SOURCE TOOL PROVIDED FOR INFORMATIONAL AND EDUCATIONAL PURPOSES ONLY.
+IT DOES NOT CONSTITUTE FINANCIAL, INVESTMENT, TAX, OR LEGAL ADVICE.
+INVESTMENTS IN SECURITIES MARKETS ARE SUBJECT TO MARKET RISKS.
+READ ALL SCHEME RELATED DOCUMENTS CAREFULLY BEFORE INVESTING.
+
+7. Disclaimer of Warranties
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
+PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS, LICENSOR, OR COPYRIGHT
+HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
+CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE
+OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.

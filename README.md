@@ -1,127 +1,239 @@
-# 📡 Newsdesk — Market News, Grouped into Stories
+# 📡 Newsdesk — Indian & Global Market Intelligence
 
-**Newsdesk** is a fast, calm reader for Indian and global market news. It pulls 30+ sources into one archive, groups the same event reported by several publishers into a single **story**, and lets you read, filter and share without leaving the app.
+<div align="center">
 
-It is a news product only: no prices, no screener, no indicators.
+<img src="./public/branding/logo-horizontal-white.svg#gh-dark-mode-only" alt="Mr. Chartist Logo" width="340" />
+<img src="./public/branding/logo-horizontal-black.svg#gh-light-mode-only" alt="Mr. Chartist Logo" width="340" />
 
-![Newsdesk — dark](./.github/assets/screenshot.png)
+<p><strong>A high-speed, calm terminal for Indian & global market news, grouped into deduplicated stories.</strong></p>
 
-<p>
-  <img src="./.github/assets/screenshot-light.png" alt="Newsdesk — light" width="62%" />
-  <img src="./.github/assets/screenshot-mobile.png" alt="Newsdesk — mobile" width="26%" />
+[![Open Source](https://img.shields.io/badge/Open%20Source-PolyForm%20Noncommercial-blue.svg?style=flat-square)](./LICENSE)
+[![Sponsorship](https://img.shields.io/badge/Sponsor-Support%20Project-ff69b4.svg?style=flat-square)](#-sponsorship--support)
+[![License: PolyForm Noncommercial 1.0.0](https://img.shields.io/badge/License-PolyForm%20NC%201.0.0-amber.svg?style=flat-square)](./LICENSE)
+[![Platform: Node.js 18+ & Vite](https://img.shields.io/badge/Platform-Node%2018%2B%20%7C%20Vite%205-purple.svg?style=flat-square)](#-tech-stack)
+[![Ecosystem: Mr. Chartist](https://img.shields.io/badge/Ecosystem-Mr.%20Chartist-orange.svg?style=flat-square)](https://mrchartist.com)
+
+</div>
+
+---
+
+## 🧭 Overview
+
+**Newsdesk** is an open-source, non-commercial market news workstation engineered by **Mr. Chartist (Rohit Singh)**. It connects to 30+ top financial publications and exchanges, aggregates hundreds of live dispatches into SQLite with an automated 30-day rolling retention, deduplicates identical headlines across publications into cohesive **Stories**, and extracts factual points via algorithmic TextRank—all wrapped in an ultra-responsive, liquid-glass workspace.
+
+> [!NOTE]
+> **Open Source & Non-Commercial Notice**  
+> Newsdesk is published under the **PolyForm Noncommercial License 1.0.0**. It is completely free for individual study, personal trading intelligence, and academic research. Any commercial exploitation, resale, or commercial SaaS deployment is strictly prohibited.
+
+---
+
+## 🖼️ Visual Showcase
+
+### 1. Today Briefing & Multi-Source Story Stream (Dark Mode)
+<div align="center">
+  <img src="./.github/assets/screenshot-today-dark.png" alt="Newsdesk Today Briefing - Dark Mode" width="100%" />
+</div>
+
+<br/>
+
+### 2. 500+ Preloaded NSE Stocks Directory & Sector Intelligence (`/stocks`)
+<div align="center">
+  <img src="./.github/assets/screenshot-stocks.png" alt="Newsdesk 500+ NSE Stocks Directory" width="100%" />
+</div>
+
+<br/>
+
+### 3. Curated Topic Explorer & Category Streams (Light Mode)
+<div align="center">
+  <img src="./.github/assets/screenshot-topic-light.png" alt="Newsdesk Topic Explorer - Light Mode" width="100%" />
+</div>
+
+<br/>
+
+### 4. Algorithmic TextRank Reader (Dark & Light Glass)
+<p align="center">
+  <img src="./.github/assets/screenshot-reader-dark.png" alt="Algorithmic Reader - Dark Mode" width="49%" />
+  <img src="./.github/assets/screenshot-reader-light.png" alt="Algorithmic Reader - Light Mode" width="49%" />
 </p>
 
 ---
 
-## ✨ What it does
+## ⚡ Key Highlights & Architecture
 
-### Stories, not duplicates
-When Reuters, CNBC and BizToc all cover the same headline, Newsdesk shows **one card** with "+2 sources". Open it and switch between each publisher's version from the "Also from" strip. Clustering runs in the browser on headline similarity within a 36-hour window.
+### 1. Smart Multi-Source Story Clustering
+When Reuters, CNBC-TV18, Economic Times, Bloomberg, and Mint report on the same event, Newsdesk consolidates them into a **single unified card** with an *"+N sources"* pill. Read the primary perspective or instantly flip between publisher coverages inside the story view.
 
-### A proper briefing
-*   **Today**: greeting, stories in the last 24 hours, **Top stories** (ranked by how many sources cover it, whether it has an image, and freshness), and **In the news**: the companies mentioned most today.
-*   **Latest**: grouped by *Last hour / Earlier today / Yesterday / This week*, with topic tabs, source and time-range filters, **Newest** or **Most covered** sort, and **Unread only**.
-*   **List or Cards**: List is the calm default for scanning headlines; Cards add images and descriptions. Your choice is remembered.
-*   **Easy to read**: metadata is plain muted text instead of coloured badges, rare actions live in a "⋯" menu, and **Text size** (Default / Large / Largest) scales the whole interface. Change it from the sidebar, the reader's **AA** button, or ⌘K; it applies before first paint.
-*   **"N new stories"** pill: new arrivals wait behind a pill, so the list never jumps while you read.
-*   **One Filters menu** (source, time, order) with removable chips for whatever is on, instead of always-visible dropdowns.
-*   **Clean cards**: a card never repeats the headline as its description.
-*   **Mute noisy sources** on the Sources page and they disappear from every list; unmute any time.
-*   **Feedback with Undo**: saving, muting and "Mark all read" confirm with a toast you can undo. "You're all caught up" when nothing is unread.
-*   **Copy brief** on Today copies the top stories as a Telegram-ready post. Recent searches are remembered. An offline banner keeps cached stories readable if the server drops, and Back returns to where you were.
+### 2. Algorithmic Summaries (Zero LLM Hallucinations)
+Instead of error-prone generative AI, Newsdesk employs graph-based **TextRank** extractive summarization:
+* Extracts clean article body text while stripping ad networks, cookie consents, and tracking noise.
+* Scores sentence importance using cosine graph centrality, lead position weights, and headline co-occurrence.
+* Pulls out critical Indian market statistics (₹ crore figures, percentages, quantities) into rapid-glance chips.
+* Delivers 100% verbatim sentences directly from the journalists.
 
-### Summaries, without AI
-Open any story and the reader leads with a **Summary** built by plain algorithms, not a language model:
+### 3. Preloaded 500+ NSE Stock Directory & Company Hub
+* Features an embedded, zero-external-dependency catalog of **500+ top Indian stocks** (Reliance, TCS, HDFC Bank, Tata Motors, Infosys, etc.) mapped with official NSE symbols, ISINs, and sector classifications.
+* Dedicated **Stocks Directory** (`/stocks`) with sector filters, market cap groupings, search, and instant company intelligence pages (`/company/:symbol`).
+* Currency is natively formatted in **Indian Rupees (₹)** throughout.
 
-1.  The server fetches the article and pulls out the real text (navigation, ads, cookie banners and "related" lists are dropped).
-2.  It splits the text into sentences and ranks them with **TextRank**: sentences similar to many others score higher. Scores are nudged up for lead position and overlap with the headline.
-3.  The top three sentences are shown **verbatim and in original order** as *Key points*, with *Key figures* (₹ amounts, percentages, quantities) pulled out as chips, then the clean full text.
-
-Nothing is generated or reworded, so every line is the publisher's own wording. BizToc stubs are followed through to the real article. If a publisher blocks automatic reading, the reader says so and falls back to the feed's own description. Summaries start loading when you hover a story and are cached for six hours.
-
-### Reader
-A sheet on phones, a centred panel on desktop, with **Summary** and **Original** tabs. Step through stories with ← / →, switch between publishers of the same story, save, or **copy as a Telegram-ready post** (headline, two key points, source, link, `@MrChartist`). The original page runs in a sandbox with no access to the app's storage.
-
-### Browse
-*   **Topics**: Markets, Economy, Business, Crypto, Commodities, Middle East, Defense, AI and more, with 24-hour unread counts.
-*   **Sources**: every feed with stories-today and latest time; tap to read only that source.
-*   **Companies**: tap any `$SYMBOL` chip for that company's news and the companies that often appear alongside it.
-*   **Search**: word-start matching with highlighting. **Saved** keeps stories on your device even after the archive is pruned.
-*   **Copy digest**: on any list, copy the top stories as one Telegram-ready post.
-
-### Fast keyboard use
-`⌘K` / `Ctrl+K` or `/` opens the command palette (companies, topics, sources, pages, story search, appearance, refresh, mark everything read). In a list: `J` / `K` move, `Enter` or `O` open, `S` save, `M` mark read. `?` shows all shortcuts.
+### 4. Apple Liquid Glass Design System
+* Translucent backdrop blur (`backdrop-filter: blur(32px)`), specular rims, and inset tactile materials.
+* Typography powered by **Outfit** (display & headers), **Inter** (readable body), and **JetBrains Mono** (financial metrics).
+* Full dark mode, light mode, and system preference support with zero flash on hydration (`theme-boot`).
+* Full keyboard navigation: `⌘K` / `Ctrl+K` command palette, `J`/`K` navigation, `S` to save, `M` to mark read.
 
 ---
 
-## 🎨 Design: Liquid Glass (iOS 26 / macOS 26)
+## 🏛️ System Architecture
 
-Newsdesk shares its design tokens with [IPO Decode](https://ipodecode.mrchartist.com), so the Mr. Chartist family reads as one product.
-
-*   **Materials**: translucent Liquid Glass (blur, saturation, specular rim) for the sidebar, toolbar, tab bar and sheets; inset-grouped cards for content.
-*   **macOS layout**: floating source-list sidebar with coloured squircle icons, translucent toolbar, large-title page headers.
-*   **iOS layout**: floating capsule tab bar with a separate round Search button, bottom-sheet reader with a grabber and swipe-to-dismiss, safe-area spacing, 44 px touch targets.
-*   **Appearance**: Light / Auto / Dark on warm-paper `#F9F7F4` and warm-black `#0F0E0D`, applied before first paint.
-*   **Type**: Plus Jakarta Sans (display), Inter (body, tabular numerals), DM Serif Display italic (brand accent), self-hosted in `public/fonts`.
-*   **Accessibility**: visible focus rings, reduced-motion, reduced-transparency and high-contrast fallbacks.
-*   **Installable**: web-app manifest and icons, so it can be added to the iOS or Android home screen.
+```
+                                 [ 30+ Financial RSS / News Feeds ]
+                                                 │
+                                                 ▼
+                                     ┌───────────────────────┐
+                                     │   backend/server.js   │
+                                     └───────────┬───────────┘
+                                                 │
+                   ┌─────────────────────────────┼─────────────────────────────┐
+                   ▼                             ▼                             ▼
+       ┌───────────────────────┐     ┌───────────────────────┐     ┌───────────────────────┐
+       │   backend/feedProxy   │     │   backend/summarize   │     │  backend/instruments  │
+       │  • XML Parser (TTL)   │     │  • TextRank extractor │     │  • 500+ NSE Stocks    │
+       │  • Safe SSRF fetcher  │     │  • ₹ Figures parser   │     │  • Sector & Cap tags  │
+       └───────────┬───────────┘     └───────────┬───────────┘     └───────────┬───────────┘
+                   │                             │                             │
+                   └─────────────────────────────┼─────────────────────────────┘
+                                                 │
+                                                 ▼
+                                     ┌───────────────────────┐
+                                     │   SQLite Database     │
+                                     │  (30-day retention)   │
+                                     └───────────┬───────────┘
+                                                 │ REST API (:3001)
+                                                 ▼
+                                     ┌───────────────────────┐
+                                     │    React 18 + Vite    │
+                                     │  • Outfit Typography  │
+                                     │  • Story Clustering   │
+                                     │  • CmdK Palette       │
+                                     │  • Liquid Glass UI    │
+                                     └───────────────────────┘
+```
 
 ---
 
-## 🏗️ Stack
+## 🚀 Quickstart & Installation
 
-**Frontend**: React 18, Vite, Tailwind CSS, Framer Motion, `cmdk`, React Query, React Router, Lucide icons.
+### Prerequisites
+* **Node.js**: v18.0.0 or higher
+* **npm**: v9.0.0 or higher
 
-**Backend**: Node.js + Express, `better-sqlite3` archive (30-day retention, URL de-duplication), `fast-xml-parser`, per-feed TTL caching with Google News fallbacks, headline-based topic routing for generic feeds, a Google News link resolver and an article proxy for the reader.
+### 1. Clone the repository
+```bash
+git clone https://github.com/MrChartist/newsdesk.git
+cd newsdesk
+```
 
-## 🚀 Run it
-
+### 2. Install dependencies
 ```bash
 npm install
-npm run start     # backend :3001 + Vite :5185
-npm test          # backend (summariser, URL safety, company matching) and front-end (clustering, blurbs, sharing) tests
 ```
 
-Open `http://localhost:5185`.
-
-| Endpoint | Purpose |
-| --- | --- |
-| `GET /api/feeds` | Archived stories (30 days), newest first |
-| `GET /api/feeds/sources` | Configured sources |
-| `GET /api/feeds/:sourceId` | One source, live |
-| `GET /api/companies` | Symbol → company name directory |
-| `GET /api/company/:symbol` | Archived news mentioning a company |
-| `GET /api/summary?url=&title=&desc=` | Extractive summary, key figures and clean text |
-| `GET /api/article-proxy?url=` | Original-page proxy for the reader |
-
-## 📂 Structure
-
-```text
-backend/            server.js · feedProxy.js (fetch, clean, categorise) · summarize.js (TextRank) · safeFetch.js (SSRF guard)
-                    db.js · companyMap.js · gnewsResolver.js · *.test.js
-src/
-  lib/stories.ts    clustering + time buckets
-  lib/share.ts      Telegram-ready post / digest
-  hooks/            news, stories, theme, saved, read-state, persistent state
-  components/
-    layout/         Sidebar, Toolbar, TabBar, CommandPalette, ShortcutsSheet
-    news/           NewsStream, NewsCard, NewsRow, LeadStory, ArticleModal, TrendingStrip
-  pages/            Home, Search, Saved, Topics, Topic, Sources, Source, Company
-  index.css         design tokens and components
+### 3. Run the development server
+```bash
+npm start
 ```
+* **Frontend Application**: `http://localhost:5185`
+* **Backend API**: `http://localhost:3001`
 
-## Notes
-
-*   Company mentions come from a keyword map (`backend/companyMap.js`). Short tickers must match case-exactly and ambiguous single words (Titan, Reliance, Apollo…) need finance context, but the match is still keyword-based, so treat company pages as a convenience filter, not a verified tag.
-*   Some publishers (for example Livemint and NDTV) refuse automatic fetches from servers; those stories get a feed-based summary and a notice.
-*   Article and summary fetches only reach public internet addresses; localhost, private ranges and cloud metadata addresses are refused, including via redirects.
-*   Story clustering is heuristic; two different events with near-identical headlines can occasionally be merged.
+### 4. Run tests
+```bash
+npm test
+```
+Runs the full suite of backend algorithmic tests (SSRF guards, TextRank summarizer, company keyword mapper) and frontend utility tests (story clustering, time bucketing, Telegram sharing formatting).
 
 ---
 
-## 👨‍💻 Author
+## 📡 Backend API Reference
 
-**Mr. Chartist — Rohit Singh**
-*SEBI Registered Research Analyst (INH000015297)*
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `GET` | `/api/health` | Healthcheck and SQLite connection status |
+| `GET` | `/api/feeds` | Paginated live stories from all 30+ publishers (30-day history) |
+| `GET` | `/api/feeds/sources` | Metadata list of active news sources with story counts |
+| `GET` | `/api/feeds/:sourceId` | Filtered feed from a specific news publisher |
+| `GET` | `/api/stocks` | Full directory of 500+ preloaded NSE equity instruments |
+| `GET` | `/api/companies` | Symbol-to-company-name lookup dictionary |
+| `GET` | `/api/company/:symbol` | News items and co-mentioned companies for an NSE symbol |
+| `GET` | `/api/summary?url=...` | On-demand TextRank key points, figures, and cleaned body |
+| `GET` | `/api/article-proxy?url=...` | Sandboxed original publisher view proxy |
 
-💖 **[Support Mr. Chartist](https://mrchartist.com)** · 📱 **[Community](https://t.me/MrChartist)** · 🐦 **[X](https://twitter.com/mrchartist)**
+---
+
+## ⌨️ Keyboard Shortcuts
+
+| Shortcut | Action |
+| :--- | :--- |
+| `⌘K` or `Ctrl+K` | Open command palette (search stories, topics, stocks, sources) |
+| `/` | Quick-focus search input |
+| `J` / `K` | Move selection down / up through story list |
+| `Enter` or `O` | Open selected story in the reader |
+| `S` | Toggle bookmark / save story locally |
+| `M` | Mark selected story as read |
+| `Esc` | Close reader sheet or modal dialog |
+| `?` | Display keyboard shortcuts cheatsheet |
+
+---
+
+## 🛠️ Tech Stack
+
+* **Client**: React 18, Vite 5, Tailwind CSS 3.4, `@tanstack/react-query`, Framer Motion, `cmdk`, Lucide React, React Router.
+* **Server**: Node.js, Express, `node:sqlite` / `better-sqlite3`, `fast-xml-parser`, custom SSRF safe fetcher.
+* **Typography**: Outfit, Inter, JetBrains Mono.
+* **Testing**: Node test runner (`node:test`) and TypeScript execution (`tsx`).
+
+---
+
+## ⚖️ License
+
+Newsdesk is released under the **[PolyForm Noncommercial License 1.0.0](./LICENSE)**.
+
+```
+Permitted:
+✔ Personal market research & reading
+✔ Academic & educational use
+✔ Non-commercial modifications and experiments
+
+Prohibited:
+✖ Commercial deployment or SaaS monetization
+✖ Distribution for commercial gain
+✖ Resale or commercial licensing
+```
+
+---
+
+## 💖 Sponsorship & Support
+
+Newsdesk is built and maintained as a completely free, open-source community tool. If you or your organization find value in our market news deduplication and high-speed research terminal, consider supporting future development:
+
+* **Sponsor via GitHub**: [github.com/sponsors/MrChartist](https://github.com/sponsors/MrChartist)
+* **Direct Community Support**: Connect with us on our official [Telegram Channel](https://t.me/MrChartist)
+* **Corporate & Academic Sponsorships**: For academic research collaborations or community grants, reach out via [mrchartist.com](https://mrchartist.com).
+
+Every contribution helps keep the server infrastructure, RSS ingestion pipelines, and community updates active.
+
+---
+
+## 👤 Author & Ecosystem
+
+**Newsdesk** is created and maintained by **Mr. Chartist (Rohit Singh)**.
+
+* **Website**: [mrchartist.com](https://mrchartist.com)
+* **Telegram**: [@MrChartist](https://t.me/MrChartist)
+* **YouTube**: [@MrChartist](https://www.youtube.com/@MrChartist)
+* **X / Twitter**: [@Mr_Chartist](https://twitter.com/Mr_Chartist)
+* **WhatsApp Channel**: [Mr. Chartist on WhatsApp](https://whatsapp.com/channel/0029VaDUeH159PwXDwq8yI1I)
+* **Instagram**: [@mrchartist](https://www.instagram.com/mrchartist)
+* **LinkedIn**: [Rohit Singh (Mr. Chartist)](https://www.linkedin.com/in/mrchartist)
+* **TradingView**: [Mr. Chartist](https://www.tradingview.com/u/MrChartist)
+* **GitHub**: [@MrChartist](https://github.com/MrChartist)
+* **IPO Decode**: [ipodecode.mrchartist.com](https://ipodecode.mrchartist.com)

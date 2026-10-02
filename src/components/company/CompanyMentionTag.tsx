@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { useCompanies } from '@/hooks/useNewsFeed';
 import { cn } from '@/lib/utils';
 
-/** $SYMBOL chip → that company's news. */
+/** Company mention chip → that company's news. */
 export default function CompanyMentionTag({ symbol, className, count, quiet }: { symbol: string; className?: string; count?: number; quiet?: boolean }) {
   const { nameOf } = useCompanies();
   return (
@@ -18,7 +18,7 @@ export default function CompanyMentionTag({ symbol, className, count, quiet }: {
         className,
       )}
     >
-      ${symbol}
+      {symbol}
       {count != null && <span className="font-semibold text-muted-foreground tnum">{count}</span>}
     </Link>
   );

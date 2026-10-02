@@ -17,6 +17,13 @@ export default function Sidebar() {
   const { stories, isFetching, isError } = useStories();
   const { isRead } = useReadArticles();
 
+  // Top stocks mentioned in active news
+  const topStocks = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const s of stories) for (const c of s.companies) m.set(c, (m.get(c) ?? 0) + 1);
+    return [...m.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
+  }, [stories]);
+
   // Topics ranked by 24h volume, with unread counts
   const topics = useMemo(() => {
     const cutoff = Date.now() - 24 * 3600_000;
@@ -33,11 +40,18 @@ export default function Sidebar() {
 
   return (
     <aside aria-label="Primary" className="glass fixed bottom-3 left-3 top-3 z-40 hidden w-[var(--sidebar-w)] flex-col overflow-hidden rounded-[var(--r-xl)] lg:flex">
-      <Link to="/" className="flex items-center gap-3 px-5 pb-4 pt-5">
-        <BrandMark size={38} />
-        <div className="leading-tight">
-          <p className="font-display text-[1.2rem] font-extrabold tracking-tight">Newsdesk</p>
-          <p className="brand-serif -mt-0.5 text-[0.95rem] text-muted-foreground">by Mr. Chartist</p>
+      <Link to="/" className="flex flex-col gap-2.5 px-5 pb-3.5 pt-5 border-b border-[var(--mat-separator)]/60">
+        <div className="flex items-center gap-3">
+          <BrandMark size={36} />
+          <div className="leading-tight">
+            <p className="font-display text-[1.2rem] font-extrabold tracking-tight">Newsdesk</p>
+            <p className="brand-serif -mt-0.5 text-[0.85rem] text-muted-foreground font-medium">by Mr. Chartist</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+            Open Source · Non-Commercial
+          </span>
         </div>
       </Link>
 
@@ -72,6 +86,26 @@ export default function Sidebar() {
                     <Icon className="h-4 w-4 shrink-0" style={{ color: cat.color }} strokeWidth={2.2} />
                     <span className="flex-1 truncate">{cat.label}</span>
                     {unread > 0 && <span className="text-xs font-semibold tnum text-muted-foreground">{compact(unread)}</span>}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {topStocks.length > 0 && (
+          <div>
+            <div className="flex items-baseline justify-between px-2.5 pb-1.5">
+              <p className="eyebrow">Stocks in News</p>
+              <Link to="/stocks" className="text-xs font-semibold text-primary">All</Link>
+            </div>
+            <div className="space-y-0.5">
+              {topStocks.map(([sym, count]) => {
+                const active = pathname === `/company/${sym}`;
+                return (
+                  <Link key={sym} to={`/company/${sym}`} className="side-item !py-1.5" aria-current={active ? 'page' : undefined}>
+                    <span className="font-extrabold text-xs flex-1 truncate">{sym}</span>
+                    <span className="text-[11px] font-semibold text-muted-foreground tnum">{count} {count === 1 ? 'story' : 'stories'}</span>
                   </Link>
                 );
               })}

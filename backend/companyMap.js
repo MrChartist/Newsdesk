@@ -148,6 +148,25 @@ const NOT_FOLLOWED_BY = { apollo: /^\s+(Global|Management|Tyres?|Group|Hospitali
 
 const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
+// Instruments registry (populated from preloaded instruments list)
+const DYNAMIC_STOCKS = new Map();
+const DYNAMIC_MAP = { ...COMPANY_MAP };
+
+export function registerStocks(stocks) {
+  if (!stocks || typeof stocks !== 'object') return;
+  for (const [sym, stock] of Object.entries(stocks)) {
+    const symbol = sym.toUpperCase();
+    DYNAMIC_STOCKS.set(symbol, stock);
+    if (!DYNAMIC_MAP[symbol]) {
+      const cleanName = (stock.name || symbol)
+        .replace(/\s+(Limited|Ltd\.?|Corporation|Corp\.?|India)\b/gi, '')
+        .trim();
+      const aliases = [stock.name, cleanName, symbol].filter(Boolean);
+      DYNAMIC_MAP[symbol] = Array.from(new Set(aliases));
+    }
+  }
+}
+
 /**
  * Match company mentions in text against the company map.
  * - short aliases (ITC, LT, IOC, SBI…) must match case-exactly, so "it", "lt" and "ioc" don't fire
@@ -159,8 +178,9 @@ function matchCompanies(text) {
   const matched = new Set();
   const hasContext = FINANCE_CONTEXT.test(text);
 
-  for (const [symbol, aliases] of Object.entries(COMPANY_MAP)) {
+  for (const [symbol, aliases] of Object.entries(DYNAMIC_MAP)) {
     for (const alias of aliases) {
+      if (!alias || alias.length < 2) continue;
       const body = escapeRe(alias);
       const ambiguous = AMBIGUOUS.has(alias.toLowerCase());
       const shortAlias = alias.length <= 4 && alias === alias.toUpperCase();
@@ -182,8 +202,30 @@ function matchCompanies(text) {
  * Get display name for a symbol
  */
 function getCompanyName(symbol) {
-  const aliases = COMPANY_MAP[symbol];
-  return aliases ? aliases[0] : symbol;
+  const s = symbol?.toUpperCase();
+  const dynamic = DYNAMIC_STOCKS.get(s);
+  if (dynamic?.name) return dynamic.name;
+  const aliases = COMPANY_MAP[s] || DYNAMIC_MAP[s];
+  return aliases ? aliases[0] : (symbol || '');
 }
 
-export { COMPANY_MAP, matchCompanies, getCompanyName };
+/**
+ * Get list of all known companies with metadata
+ */
+function getAllCompanies() {
+  const symbols = Array.from(new Set([...Object.keys(COMPANY_MAP), ...DYNAMIC_STOCKS.keys()]));
+  return symbols.map((symbol) => {
+    const dyn = DYNAMIC_STOCKS.get(symbol);
+    return {
+      symbol,
+      name: dyn?.name || getCompanyName(symbol),
+      sector: dyn?.sector || 'Other',
+      price: dyn?.price ?? null,
+      change: dyn?.change ?? null,
+      marketCap: dyn?.marketCap ?? null,
+    };
+  });
+}
+
+export { COMPANY_MAP, matchCompanies, getCompanyName, getAllCompanies };
+

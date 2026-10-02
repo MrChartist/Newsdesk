@@ -90,11 +90,11 @@ export default function CommandPalette() {
         {nothing && <p className="px-5 py-8 text-center text-sm text-muted-foreground">No matches for “{query}”.</p>}
 
         {companyHits.length > 0 && (
-          <Group heading="Companies">
+          <Group heading="Companies & Stocks">
             {companyHits.map(([sym, name]) => (
               <Command.Item key={sym} value={`co-${sym}`} onSelect={() => go(`/company/${sym}`)} className={itemClass}>
                 <Icon bg="#FF9F0A"><Building2 className="h-[15px] w-[15px]" /></Icon>
-                <span className="min-w-0 flex-1"><span className="block truncate font-semibold">{name}</span><span className="block text-xs text-muted-foreground">${sym}</span></span>
+                <span className="min-w-0 flex-1"><span className="block truncate font-semibold">{name}</span><span className="block text-xs text-muted-foreground font-mono">{sym}</span></span>
                 <span className="text-xs tnum text-muted-foreground">{mentionCounts.get(sym) ?? 0} stories</span>
               </Command.Item>
             ))}
