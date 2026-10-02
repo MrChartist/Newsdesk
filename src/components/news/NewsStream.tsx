@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { AlertTriangle, RefreshCw, Inbox, Search, X, LayoutGrid, Rows3, ArrowUp, CheckCheck, Copy, Check, Circle } from 'lucide-react';
+import { AlertTriangle, RefreshCw, Inbox, Search, X, LayoutGrid, Rows3, ArrowUp, CheckCheck, Copy, Circle, PartyPopper } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { type Story, BUCKET_ORDER, timeBucket, coverage } from '@/lib/stories';
 import { formatDigest, copyText } from '@/lib/share';
@@ -8,7 +8,9 @@ import { useDebounce } from '@/hooks/useDebounce';
 import { usePersistentState } from '@/hooks/usePersistentState';
 import { useFeedSources } from '@/hooks/useNewsFeed';
 import { useReadArticles } from '@/hooks/useReadArticles';
-import { toggleBookmark } from '@/hooks/useBookmarks';
+import { toggleBookmarkWithToast } from '@/hooks/useBookmarks';
+import { toast } from '@/lib/toast';
+import { FilterMenu, ActiveFilters, RANGES, type RangeId, type SortId } from './FilterMenu';
 import { getCategoryMeta } from '@/data/categories';
 import EmptyState from '../ui/EmptyState';
 import { SectionHeader } from '../ui/Section';
@@ -19,13 +21,6 @@ import ArticleModal from './ArticleModal';
 
 const PAGE_SIZE = 24;
 const GRID = 'grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3';
-const RANGES = [
-  { id: 'any', label: 'Any time', ms: Infinity },
-  { id: '1h', label: 'Past hour', ms: 3600_000 },
-  { id: '6h', label: 'Past 6 hours', ms: 6 * 3600_000 },
-  { id: '24h', label: 'Past 24 hours', ms: 24 * 3600_000 },
-  { id: '7d', label: 'Past 7 days', ms: 7 * 86400_000 },
-] as const;
 
 interface Props {
   stories: Story[];
@@ -40,8 +35,10 @@ interface Props {
   searchQuery?: string;
   /** Show topic tabs derived from the stories */
   showTopics?: boolean;
-  /** Story ids already shown elsewhere on the page; hidden while unfiltered */
+  /** Story ids already shown elsewhere on the page; hidden from the list */
   excludeIds?: Set<string>;
+  /** Stories shown elsewhere on the page that "Mark all read" should include */
+  alsoMark?: Story[];
   /** Hold back newly arrived stories behind a "N new stories" pill */
   live?: boolean;
   /** Enables "Copy digest" with this heading */
@@ -51,23 +48,22 @@ interface Props {
 }
 
 export default function NewsStream({
-  stories, isLoading, isError, onRetry, title = 'Latest', initialQuery = '', searchQuery, showTopics, excludeIds,
+  stories, isLoading, isError, onRetry, title = 'Latest', initialQuery = '', searchQuery, showTopics, excludeIds, alsoMark,
   live = true, digestTitle, emptyTitle = 'No stories found', emptyHint = 'Try a different filter or search term.',
 }: Props) {
   const { data: sources } = useFeedSources();
-  const { isRead, markManyRead } = useReadArticles();
+  const { isRead, markManyRead, markManyReadWithUndo } = useReadArticles();
 
   const [query, setQuery] = useState(initialQuery);
   const [source, setSource] = useState('');
-  const [range, setRange] = useState<(typeof RANGES)[number]['id']>('any');
+  const [range, setRange] = useState<RangeId>('any');
   const [topic, setTopic] = useState<string | null>(null);
   const [unreadOnly, setUnreadOnly] = useState(false);
-  const [sort, setSort] = useState<'newest' | 'covered'>('newest');
+  const [sort, setSort] = useState<SortId>('newest');
   const [view, setView] = usePersistentState<'cards' | 'list'>('newsdesk:view', 'cards');
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState(-1);
   const [openId, setOpenId] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
   const debounced = useDebounce(searchQuery ?? query, 200);
   const sentinel = useRef<HTMLDivElement>(null);
 
@@ -84,7 +80,7 @@ export default function NewsStream({
   const topics = useMemo(() => {
     const m = new Map<string, number>();
     shown.forEach((s) => m.set(s.lead.category, (m.get(s.lead.category) ?? 0) + 1));
-    return [...m.entries()].sort((a, b) => b[1] - a[1]).slice(0, 12).map(([id]) => id);
+    return [...m.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8).map(([id]) => id);
   }, [shown]);
 
   const filtering = Boolean(debounced.trim() || source || topic || unreadOnly || range !== 'any');
@@ -173,20 +169,18 @@ export default function NewsStream({
       if (e.key === 'j') move(1);
       else if (e.key === 'k') move(-1);
       else if (selected >= 0 && (e.key === 'o' || (e.key === 'Enter' && !['ARTICLE', 'BUTTON', 'A'].includes(el.tagName)))) { e.preventDefault(); openAt(selected); }
-      else if (e.key === 's' && selected >= 0) toggleBookmark(visible[selected].lead);
-      else if (e.key === 'm' && selected >= 0) markManyRead([visible[selected].lead.link]);
+      else if (e.key === 's' && selected >= 0) toggleBookmarkWithToast(visible[selected].lead);
+      else if (e.key === 'm' && selected >= 0) { markManyRead([visible[selected].lead.link]); toast('Marked as read'); }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [openId, visible, selected, openAt, markManyRead]);
 
-  const unreadCount = useMemo(() => filtered.filter((s) => !isRead(s.lead.link)).length, [filtered, isRead]);
+  const toMark = useMemo(() => [...filtered, ...(alsoMark ?? [])], [filtered, alsoMark]);
+  const unreadCount = useMemo(() => toMark.filter((s) => !isRead(s.lead.link)).length, [toMark, isRead]);
 
   const copyDigest = async () => {
-    if (await copyText(formatDigest(digestTitle ?? title, filtered))) {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
+    toast((await copyText(formatDigest(digestTitle ?? title, filtered))) ? 'Digest copied for Telegram' : 'Couldn’t copy — allow clipboard access');
   };
 
   const applyFresh = () => { setSnapshot(stories); window.scrollTo({ top: 0, behavior: 'smooth' }); };
@@ -200,6 +194,9 @@ export default function NewsStream({
           hint="The Newsdesk backend isn’t reachable. Make sure the server is running on port 3001."
           action={onRetry && <button onClick={onRetry} className="btn btn-primary"><RefreshCw className="h-4 w-4" /> Try again</button>} />
       );
+    }
+    if (!filtered.length && unreadOnly && !debounced.trim()) {
+      return <EmptyState icon={PartyPopper} title="You’re all caught up" hint="Nothing unread here. Turn off “Unread” to see everything again." action={<button className="btn btn-plain" onClick={() => setUnreadOnly(false)}>Show all stories</button>} />;
     }
     if (!filtered.length) {
       return (
@@ -251,12 +248,11 @@ export default function NewsStream({
       <SectionHeader title={title} count={isLoading ? undefined : filtered.length}>
         {digestTitle && filtered.length > 0 && (
           <button onClick={copyDigest} className="btn btn-plain !min-h-9 !px-3 !text-[0.8125rem]" title="Copy the top stories as a Telegram-ready post">
-            {copied ? <Check className="h-4 w-4 text-profit" /> : <Copy className="h-4 w-4" />}
-            <span className="hidden sm:inline">{copied ? 'Copied' : 'Copy digest'}</span>
+            <Copy className="h-4 w-4" /><span className="hidden sm:inline">Copy digest</span>
           </button>
         )}
         {unreadCount > 0 && (
-          <button onClick={() => markManyRead(filtered.map((s) => s.lead.link))} className="btn btn-plain !min-h-9 !px-3 !text-[0.8125rem]">
+          <button onClick={() => markManyReadWithUndo(toMark.map((s) => s.lead.link))} className="btn btn-plain !min-h-9 !px-3 !text-[0.8125rem]">
             <CheckCheck className="h-4 w-4" /><span className="hidden sm:inline">Mark all read</span>
           </button>
         )}
@@ -298,17 +294,7 @@ export default function NewsStream({
             </button>
           )}
         </div>}
-        <select value={source} onChange={(e) => setSource(e.target.value)} className="field !w-auto" aria-label="Source">
-          <option value="">All sources</option>
-          {(sources ?? []).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-        </select>
-        <select value={range} onChange={(e) => setRange(e.target.value as typeof range)} className="field !w-auto" aria-label="Time range">
-          {RANGES.map((r) => <option key={r.id} value={r.id}>{r.label}</option>)}
-        </select>
-        <select value={sort} onChange={(e) => setSort(e.target.value as typeof sort)} className="field !w-auto" aria-label="Sort">
-          <option value="newest">Newest</option>
-          <option value="covered">Most covered</option>
-        </select>
+        <FilterMenu sources={sources ?? []} source={source} onSource={setSource} range={range} onRange={setRange} sort={sort} onSort={setSort} />
         <button onClick={() => setUnreadOnly((v) => !v)} aria-pressed={unreadOnly} className={cn('btn', unreadOnly ? 'btn-primary' : 'btn-plain')}>
           <Circle className={cn('h-3 w-3', unreadOnly && 'fill-current')} /> Unread
         </button>
@@ -321,6 +307,9 @@ export default function NewsStream({
           ))}
         </div>
       </div>
+
+      <ActiveFilters sourceName={sources?.find((x) => x.id === source)?.name} range={range} sort={sort}
+        onClearSource={() => setSource('')} onClearRange={() => setRange('any')} onClearSort={() => setSort('newest')} />
 
       <AnimatePresence>
         {fresh > 0 && (

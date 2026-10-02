@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "backend": "node backend/server.js",
     "start": "concurrently \"npm run backend\" \"npm run dev\"",
-    "test": "node --test \"backend/*.test.js\""
+    "test": "node --test \"backend/*.test.js\" && tsx --test src/lib/*.test.ts"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.83.0",
@@ -34,6 +34,7 @@
     "autoprefixer": "^10.4.21",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.17",
+    "tsx": "^4.23.15",
     "typescript": "^5.8.3",
     "vite": "^5.4.19"
   }

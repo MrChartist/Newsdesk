@@ -5,7 +5,7 @@ import { Search, CornerDownLeft, Newspaper, Sun, Hash, Building2, Radio, Keyboar
 import { useStories } from '@/hooks/useStories';
 import { useCompanies, useFeedSources } from '@/hooks/useNewsFeed';
 import { setTheme } from '@/hooks/useTheme';
-import { markManyRead } from '@/hooks/useReadArticles';
+import { markManyReadWithUndo } from '@/hooks/useReadArticles';
 import { CATEGORIES } from '@/data/categories';
 import { NAV_ITEMS } from './nav';
 import { openShortcuts } from './ShortcutsSheet';
@@ -146,7 +146,7 @@ export default function CommandPalette() {
               <Command.Item value="refresh" onSelect={() => { refetch(); setOpen(false); }} className={itemClass}>
                 <Icon bg="#0A84FF"><RefreshCw className="h-[15px] w-[15px]" /></Icon><span className="flex-1">Refresh news</span>
               </Command.Item>
-              <Command.Item value="read-all" onSelect={() => { markManyRead((data?.items ?? []).map((i) => i.link)); setOpen(false); }} className={itemClass}>
+              <Command.Item value="read-all" onSelect={() => { markManyReadWithUndo((data?.items ?? []).map((i) => i.link)); setOpen(false); }} className={itemClass}>
                 <Icon bg="#30D158"><CheckCheck className="h-[15px] w-[15px]" /></Icon><span className="flex-1">Mark everything as read</span>
               </Command.Item>
               <Command.Item value="shortcuts" onSelect={() => { setOpen(false); setTimeout(openShortcuts, 80); }} className={itemClass}>

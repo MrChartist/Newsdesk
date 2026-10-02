@@ -1,4 +1,5 @@
 import { useSyncExternalStore, useCallback } from 'react';
+import { toast } from '@/lib/toast';
 
 // Tracks which articles the reader has opened so the feed can dim them and
 // show an unread dot on the rest. Capped so localStorage never grows unbounded.
@@ -48,8 +49,25 @@ export function markManyRead(links: string[]) {
   emit();
 }
 
+export function unmarkMany(links: string[]) {
+  const drop = new Set(links);
+  store = store.filter((l) => !drop.has(l));
+  lookup = new Set(store);
+  try { localStorage.setItem(KEY, JSON.stringify(store)); } catch { /* ignore */ }
+  emit();
+}
+
+/** Mark many as read and offer Undo. Returns how many actually changed. */
+export function markManyReadWithUndo(links: string[]) {
+  const fresh = links.filter((l) => !lookup.has(l));
+  if (!fresh.length) return 0;
+  markManyRead(fresh);
+  toast(`Marked ${fresh.length.toLocaleString('en-IN')} ${fresh.length === 1 ? 'story' : 'stories'} as read`, { label: 'Undo', run: () => unmarkMany(fresh) });
+  return fresh.length;
+}
+
 export function useReadArticles() {
   const snapshot = useSyncExternalStore(subscribe, () => store, () => EMPTY);
   const isRead = useCallback((link: string) => lookup.has(link), [snapshot]); // eslint-disable-line react-hooks/exhaustive-deps
-  return { isRead, markRead, markManyRead, count: snapshot.length };
+  return { isRead, markRead, markManyRead, markManyReadWithUndo, count: snapshot.length };
 }

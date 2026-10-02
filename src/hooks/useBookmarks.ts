@@ -1,5 +1,6 @@
 import { useSyncExternalStore, useCallback } from 'react';
 import type { NewsItem } from '@/types/news';
+import { toast } from '@/lib/toast';
 
 // Saved articles are persisted in localStorage keyed by article link. We store
 // the full NewsItem so the "Saved" view keeps working even after the source
@@ -68,6 +69,13 @@ export function toggleBookmark(item: NewsItem) {
   emit();
 }
 
+/** Toggle a saved story and confirm it, with Undo. */
+export function toggleBookmarkWithToast(item: NewsItem) {
+  const wasSaved = Boolean(store[item.link]);
+  toggleBookmark(item);
+  toast(wasSaved ? 'Removed from Saved' : 'Saved for later', { label: 'Undo', run: () => toggleBookmark(item) });
+}
+
 export function useBookmarks() {
   const bookmarks = useSyncExternalStore(subscribe, getSnapshot, () => EMPTY);
 
@@ -81,6 +89,6 @@ export function useBookmarks() {
     items: Object.values(bookmarks),
     count: Object.keys(bookmarks).length,
     isBookmarked,
-    toggle: toggleBookmark,
+    toggle: toggleBookmarkWithToast,
   };
 }

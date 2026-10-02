@@ -9,6 +9,7 @@ import { useBookmarks } from '@/hooks/useBookmarks';
 import { useArticleSummary } from '@/hooks/useArticleSummary';
 import ReaderSummary from './ReaderSummary';
 import { markRead } from '@/hooks/useReadArticles';
+import { toast } from '@/lib/toast';
 import CategoryBadge from './CategoryBadge';
 import FeedSourceBadge from './FeedSourceBadge';
 import CompanyMentionTag from '../company/CompanyMentionTag';
@@ -88,8 +89,8 @@ export default function ArticleModal({ story, onClose, onPrev, onNext }: Props) 
     return () => { window.removeEventListener('keydown', onKey); document.body.style.overflow = ''; };
   }, [story, item, onClose, onNext, onPrev, toggle]);
 
-  const copyLink = async () => { if (item && await copyText(item.link)) flash('link'); };
-  const copyPost = async () => { if (item && await copyText(formatPost(item, summary.data?.summary))) flash('post'); };
+  const copyLink = async () => { if (item && await copyText(item.link)) { flash('link'); toast('Link copied'); } };
+  const copyPost = async () => { if (item && await copyText(formatPost(item, summary.data?.summary))) { flash('post'); toast('Telegram post copied'); } };
   const share = async () => {
     if (!item) return;
     if (navigator.share) { try { await navigator.share({ title: item.title, url: item.link }); } catch { /* cancelled */ } }

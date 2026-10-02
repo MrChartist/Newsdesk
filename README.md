@@ -23,6 +23,11 @@ When Reuters, CNBC and BizToc all cover the same headline, Newsdesk shows **one 
 *   **Latest**: grouped by *Last hour / Earlier today / Yesterday / This week*, with topic tabs, source and time-range filters, **Newest** or **Most covered** sort, and **Unread only**.
 *   **Cards or List**: switch layout; your choice is remembered.
 *   **"N new stories"** pill: new arrivals wait behind a pill, so the list never jumps while you read.
+*   **One Filters menu** (source, time, order) with removable chips for whatever is on, instead of always-visible dropdowns.
+*   **Clean cards**: a card never repeats the headline as its description.
+*   **Mute noisy sources** on the Sources page and they disappear from every list; unmute any time.
+*   **Feedback with Undo**: saving, muting and "Mark all read" confirm with a toast you can undo. "You're all caught up" when nothing is unread.
+*   **Copy brief** on Today copies the top stories as a Telegram-ready post. Recent searches are remembered. An offline banner keeps cached stories readable if the server drops, and Back returns to where you were.
 
 ### Summaries, without AI
 Open any story and the reader leads with a **Summary** built by plain algorithms, not a language model:
@@ -73,7 +78,7 @@ Newsdesk shares its design tokens with [IPO Decode](https://ipodecode.mrchartist
 ```bash
 npm install
 npm run start     # backend :3001 + Vite :5185
-npm test          # backend unit tests (summariser, URL safety, company matching)
+npm test          # backend (summariser, URL safety, company matching) and front-end (clustering, blurbs, sharing) tests
 ```
 
 Open `http://localhost:5185`.

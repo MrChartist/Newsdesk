@@ -5,8 +5,7 @@ import { useBookmarks } from '@/hooks/useBookmarks';
 import { useStories } from '@/hooks/useStories';
 import { useReadArticles } from '@/hooks/useReadArticles';
 import { getCategoryMeta } from '@/data/categories';
-import { NAV_ITEMS, SEARCH_ITEM, isActive } from './nav';
-import { openCommandPalette } from './CommandPalette';
+import { NAV_ITEMS, isActive } from './nav';
 import BrandMark from './BrandMark';
 import ThemeToggle from './ThemeToggle';
 
@@ -33,21 +32,13 @@ export default function Sidebar() {
 
   return (
     <aside aria-label="Primary" className="glass fixed bottom-3 left-3 top-3 z-40 hidden w-[var(--sidebar-w)] flex-col overflow-hidden rounded-[var(--r-xl)] lg:flex">
-      <Link to="/" className="flex items-center gap-3 px-5 pb-3 pt-5">
+      <Link to="/" className="flex items-center gap-3 px-5 pb-4 pt-5">
         <BrandMark size={38} />
         <div className="leading-tight">
           <p className="font-display text-[1.2rem] font-extrabold tracking-tight">Newsdesk</p>
           <p className="brand-serif -mt-0.5 text-[0.95rem] text-muted-foreground">by Mr. Chartist</p>
         </div>
       </Link>
-
-      <div className="px-3 pb-2">
-        <button onClick={openCommandPalette} className="field flex items-center gap-2 !py-2 text-left text-muted-foreground" aria-label="Search">
-          <SEARCH_ITEM.icon className="h-4 w-4" />
-          <span className="flex-1 text-sm">Search</span>
-          <kbd className="kbd">⌘K</kbd>
-        </button>
-      </div>
 
       <nav className="flex-1 space-y-5 overflow-y-auto px-3 pb-3 pt-1 scrollbar-none">
         <div className="space-y-0.5">

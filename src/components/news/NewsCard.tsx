@@ -1,5 +1,6 @@
 import { Bookmark } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { blurbOf } from '@/lib/blurb';
 import type { NewsItem } from '@/types/news';
 import type { Story } from '@/lib/stories';
 import { useBookmarks } from '@/hooks/useBookmarks';
@@ -52,6 +53,7 @@ export default function NewsCard({ story, query, selected, domId, onOpen }: Stor
   const { read, open } = useStoryRead(story);
   const go = () => open(onOpen);
   const prefetch = useHoverPrefetch(story);
+  const blurb = blurbOf(item);
 
   return (
     <article
@@ -91,9 +93,9 @@ export default function NewsCard({ story, query, selected, domId, onOpen }: Stor
           <Highlight text={item.title} query={query} />
         </h3>
 
-        {item.description && item.description.trim() !== item.title.trim() && (
+        {blurb && (
           <p className="line-clamp-2 text-sm leading-relaxed text-muted-foreground">
-            <Highlight text={item.description} query={query} />
+            <Highlight text={blurb} query={query} />
           </p>
         )}
 

@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils';
+import { blurbOf } from '@/lib/blurb';
 import type { Story } from '@/lib/stories';
 import { coverage } from '@/lib/stories';
 import { useReadArticles } from '@/hooks/useReadArticles';
@@ -46,9 +47,7 @@ export default function LeadStory({ lead, others, onSelect }: Props) {
             {coverage(lead) >= 3 && <Coverage story={lead} light />}
           </div>
           <h2 className="line-clamp-4 font-display text-[1.5rem] font-extrabold leading-[1.15] tracking-tight sm:text-[1.875rem]">{item.title}</h2>
-          {item.description && item.description.trim() !== item.title.trim() && (
-            <p className="line-clamp-2 max-w-2xl text-sm text-white/75 sm:text-[0.9375rem]">{item.description}</p>
-          )}
+          {blurbOf(item) && <p className="line-clamp-2 max-w-2xl text-sm text-white/75 sm:text-[0.9375rem]">{blurbOf(item)}</p>}
         </div>
       </article>
 
