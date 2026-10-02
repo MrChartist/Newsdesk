@@ -120,6 +120,23 @@ const GEO_KEYWORDS = {
   AI:         /\b(artificial intelligence|openai|chatgpt|llm|generative ai|nvidia|anthropic|sam altman|machine learning|deep learning|ai startup|ai agent|gemini|claude)\b/i,
 };
 
+// Generic feeds (BizToc, headline feeds) carry no useful section — route them by headline.
+const GENERIC_CATEGORIES = new Set(['Global', 'General', 'Headlines']);
+const TOPIC_KEYWORDS = [
+  ['Crypto', /\b(bitcoin|btc|ethereum|ether|crypto|cryptocurrency|stablecoin|binance|coinbase|solana|dogecoin|bitget|token)\b/i],
+  ['Commodities', /\b(crude|brent|oil prices?|opec|gold|silver|copper|natural gas|lng|wheat|commodit)/i],
+  ['IPO', /\b(ipo|listing|anchor investors?|grey market|gmp|public offer)\b/i],
+  ['Economy', /\b(inflation|gdp|rbi|central bank|interest rates?|rate (cut|hike)|fed|federal reserve|ecb|tariffs?|unemployment|jobs report|economy|economic|fiscal|budget|cpi|recession|bond yields?|treasury)\b/i],
+  ['Markets', /\b(stocks?|shares|nifty|sensex|s&p|nasdaq|dow|wall street|equities|equity|rally|sell-?off|market(s)?|index|futures|hang seng|nikkei|ftse)\b/i],
+  ['Business', /\b(earnings|revenue|profit|quarterly|ceo|cfo|merger|acquisition|acquires?|layoffs?|job cuts|startup|funding|valuation|bankruptcy|lawsuit|antitrust|ftc|sec)\b/i],
+  ['Tech', /\b(apple|google|microsoft|meta|amazon|tesla|spacex|semiconductor|chip|chips|software|cyber|smartphone|iphone|android|app)\b/i],
+];
+
+function classifyGeneric(title) {
+  for (const [cat, re] of TOPIC_KEYWORDS) if (re.test(title)) return cat;
+  return null;
+}
+
 function extractCategory(title, link, feedCategory) {
   // BizToc: category in title as #hashtag
   const hashMatch = extractText(title).match(/#(\w+)\s*$/);
@@ -149,7 +166,10 @@ function extractCategory(title, link, feedCategory) {
   if (url.includes('/defense') || url.includes('/defence') || url.includes('/military')) return 'Defense';
   if (url.includes('/politics') || url.includes('/diplomacy')) return 'Geopolitics';
 
-  return feedCategory || 'General';
+  if (!feedCategory || GENERIC_CATEGORIES.has(feedCategory)) {
+    return classifyGeneric(titleText) || feedCategory || 'General';
+  }
+  return feedCategory;
 }
 
 const NAMED_ENTITIES = {
@@ -170,6 +190,15 @@ function unescapeHtml(text) {
       .replace(/&([a-z]+);/gi, (m, name) => NAMED_ENTITIES[name.toLowerCase()] ?? m);
   }
   return out;
+}
+
+// Decode entities, drop tags (including truncated ones like "p>…"), collapse whitespace
+function cleanDescription(raw) {
+  let out = unescapeHtml(extractText(raw));
+  out = out.replace(/<[^>]*>?/g, ' ');            // complete or dangling tags
+  out = out.replace(/^\s*\/?[a-z0-9]{1,6}>\s*/i, ''); // leading remnant such as "p>"
+  out = unescapeHtml(out).replace(/\s+/g, ' ').trim();
+  return out.slice(0, 300);
 }
 
 function cleanTitle(title) {
@@ -219,7 +248,7 @@ function parseItems(xml, feedConfig) {
       return {
         id: `${feedConfig.id}-${idx}-${pubDate.getTime()}`,
         title,
-        description: unescapeHtml(description).replace(/<[^>]+>/g, '').slice(0, 300), // Strip any HTML and decode entities
+        description: cleanDescription(description),
         link,
         pubDate: pubDate.toISOString(),
         image,
@@ -286,6 +315,12 @@ async function fetchFeed(feedConfig) {
 
 const RETENTION_DAYS = 30;
 
+// Re-apply cleaning/routing to archived rows (the DB keeps what was stored at insert time)
+function refineArticle(a) {
+  const category = GENERIC_CATEGORIES.has(a.category) ? (classifyGeneric(a.title) || a.category) : a.category;
+  return { ...a, category, description: cleanDescription(a.description) };
+}
+
 async function fetchAllFeeds() {
   // 1. Fetch fresh items from all RSS feeds
   const results = await Promise.allSettled(FEEDS.map(f => fetchFeed(f)));
@@ -315,7 +350,7 @@ async function fetchAllFeeds() {
   }
 
   // 4. Return all archived articles within retention, sorted by newest
-  return getRecentArticles(RETENTION_DAYS);
+  return getRecentArticles(RETENTION_DAYS).map(refineArticle);
 }
 
 function getFeedConfigs() {

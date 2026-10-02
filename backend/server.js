@@ -2,9 +2,8 @@
 import express from 'express';
 import cors from 'cors';
 import { fetchAllFeeds, getFeedConfigs, FEEDS, fetchFeed } from './feedProxy.js';
-import { fetchStocks, fetchIndices, getTopMovers, getSectorPerformance, getSectorDetail } from './tvScanner.js';
-import { matchCompanies, getCompanyName } from './companyMap.js';
-import { getArticlesByCompany, getArticlesByCompanies } from './db.js';
+import { COMPANY_MAP, getCompanyName } from './companyMap.js';
+import { getArticlesByCompany } from './db.js';
 import { isGoogleNewsUrl, resolveGoogleNewsUrl } from './gnewsResolver.js';
 
 const app = express();
@@ -45,91 +44,17 @@ app.get('/api/feeds/:sourceId', async (req, res) => {
   }
 });
 
-// ─── Market Data (TradingView) ───────────────
-app.get('/api/market/all', async (req, res) => {
-  try {
-    const stocks = await fetchStocks();
-    res.json({ count: Object.keys(stocks).length, stocks });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+// ─── Companies (news-only) ───────────────────
+// Symbol → display name directory, used to label company mentions in the UI.
+app.get('/api/companies', (req, res) => {
+  res.json(Object.keys(COMPANY_MAP).map((symbol) => ({ symbol, name: getCompanyName(symbol) })));
 });
 
-app.get('/api/market/indices', async (req, res) => {
-  try {
-    const indices = await fetchIndices();
-    res.json(indices);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.get('/api/market/movers', async (req, res) => {
-  try {
-    const stocks = await fetchStocks();
-    const movers = getTopMovers(stocks);
-    res.json(movers);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.get('/api/market/sectors', async (req, res) => {
-  try {
-    const stocks = await fetchStocks();
-    const sectors = getSectorPerformance(stocks);
-    res.json(sectors);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// ─── Sector Detail (constituents + leaders + sector-wide news) ──
-app.get('/api/market/sector/:name', async (req, res) => {
-  try {
-    const stocks = await fetchStocks();
-    const name = req.params.name;
-    const detail = getSectorDetail(stocks, name);
-    if (!detail) return res.status(404).json({ error: `Sector "${name}" not found` });
-
-    // Join sector → constituent symbols → their archived news
-    const news = getArticlesByCompanies(detail.stocks, 30);
-    res.json({ ...detail, news: { count: news.length, items: news.slice(0, 60) } });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.get('/api/market/:symbol', async (req, res) => {
-  try {
-    const stocks = await fetchStocks();
-    const symbol = req.params.symbol.toUpperCase();
-    const stock = stocks[symbol];
-    if (!stock) return res.status(404).json({ error: `${symbol} not found` });
-    res.json(stock);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// ─── Company (combined: stock + news) ────────
-app.get('/api/company/:symbol', async (req, res) => {
+app.get('/api/company/:symbol', (req, res) => {
   try {
     const symbol = req.params.symbol.toUpperCase();
-    const stocks = await fetchStocks();
-
-    const stock = stocks[symbol] || null;
-    const companyName = getCompanyName(symbol);
-
-    // Query company news directly from SQLite
     const news = getArticlesByCompany(symbol, 30);
-
-    res.json({
-      symbol,
-      name: companyName,
-      stock,
-      news: { count: news.length, items: news.slice(0, 50) },
-    });
+    res.json({ symbol, name: getCompanyName(symbol), news: { count: news.length, items: news.slice(0, 80) } });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -197,10 +122,7 @@ app.get('/api/article-proxy', async (req, res) => {
 app.listen(PORT, () => {
   console.log(`\n  🗞️  Newsdesk Backend running on http://localhost:${PORT}`);
   console.log(`  📡  ${FEEDS.length} RSS feeds configured (incl. geopolitics, Iran, Middle East, defense)`);
-  console.log(`  📊  TradingView Scanner active\n`);
 
   // Warm up caches
   fetchAllFeeds().then(items => console.log(`  ✅  Initial feed load: ${items.length} articles`));
-  fetchStocks().then(stocks => console.log(`  ✅  Initial stock scan: ${Object.keys(stocks).length} stocks`));
-  fetchIndices().then(idx => console.log(`  ✅  Index data loaded: ${Object.keys(idx).length} indices`));
 });

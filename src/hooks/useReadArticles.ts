@@ -39,8 +39,17 @@ export function markRead(link: string) {
   emit();
 }
 
+export function markManyRead(links: string[]) {
+  const fresh = links.filter((l) => !lookup.has(l));
+  if (!fresh.length) return;
+  store = [...fresh, ...store].slice(0, MAX);
+  lookup = new Set(store);
+  try { localStorage.setItem(KEY, JSON.stringify(store)); } catch { /* ignore */ }
+  emit();
+}
+
 export function useReadArticles() {
   const snapshot = useSyncExternalStore(subscribe, () => store, () => EMPTY);
   const isRead = useCallback((link: string) => lookup.has(link), [snapshot]); // eslint-disable-line react-hooks/exhaustive-deps
-  return { isRead, markRead, count: snapshot.length };
+  return { isRead, markRead, markManyRead, count: snapshot.length };
 }

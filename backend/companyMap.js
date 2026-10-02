@@ -1,6 +1,5 @@
 // Company name ↔ symbol mapping for 200+ NSE/BSE stocks
 // Used by feedProxy to enrich news with stock mentions
-// Used by tvScanner to resolve symbols
 
 const COMPANY_MAP = {
   // Nifty 50 Heavyweights

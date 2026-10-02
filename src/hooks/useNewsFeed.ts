@@ -1,5 +1,6 @@
+import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import type { NewsFeedResponse, NewsItem, FeedSource } from '@/types/news';
+import type { NewsFeedResponse, FeedSource } from '@/types/news';
 
 async function fetchNews(): Promise<NewsFeedResponse> {
   const res = await fetch('/api/feeds');
@@ -30,27 +31,19 @@ export function useFeedSources() {
   });
 }
 
-export function useFilteredNews(
-  items: NewsItem[] | undefined,
-  filters: {
-    search?: string;
-    category?: string;
-    source?: string;
-    company?: string;
-  }
-) {
-  if (!items) return [];
+export interface CompanyInfo { symbol: string; name: string }
 
-  return items.filter(item => {
-    if (filters.search) {
-      const q = filters.search.toLowerCase();
-      if (!item.title.toLowerCase().includes(q) && !item.description.toLowerCase().includes(q)) {
-        return false;
-      }
-    }
-    if (filters.category && item.category !== filters.category) return false;
-    if (filters.source && item.source.id !== filters.source) return false;
-    if (filters.company && !item.companies.includes(filters.company)) return false;
-    return true;
+/** Symbol → display name directory for company mentions. */
+export function useCompanies() {
+  const q = useQuery<CompanyInfo[]>({
+    queryKey: ['companies'],
+    queryFn: async () => {
+      const res = await fetch('/api/companies');
+      if (!res.ok) throw new Error('Failed to fetch companies');
+      return res.json();
+    },
+    staleTime: Infinity,
   });
+  const names = useMemo(() => new Map((q.data ?? []).map((c) => [c.symbol, c.name])), [q.data]);
+  return { names, nameOf: (symbol: string) => names.get(symbol) ?? symbol };
 }

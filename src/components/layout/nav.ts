@@ -1,46 +1,39 @@
-import { Newspaper, LineChart, Layers, Star, Bookmark, LayoutGrid, type LucideIcon } from 'lucide-react';
+import { Newspaper, Bookmark, LayoutGrid, Radio, Search, type LucideIcon } from 'lucide-react';
 
 export interface NavItem {
   label: string;
-  short?: string;
   path: string;
   icon: LucideIcon;
-  /** iOS system colour used for the squircle icon */
+  /** iOS system colour for the squircle icon */
   tint: string;
-  badge?: 'watchlist' | 'saved';
-  match?: (pathname: string, search: string) => boolean;
+  badge?: 'saved';
 }
 
 export const NAV_ITEMS: NavItem[] = [
-  { label: 'Newsdesk', short: 'News', path: '/', icon: Newspaper, tint: '#0A84FF',
-    match: (p, s) => p === '/' && !s.includes('saved=1') },
-  { label: 'Saved', path: '/?saved=1', icon: Bookmark, tint: '#FF9F0A', badge: 'saved',
-    match: (p, s) => p === '/' && s.includes('saved=1') },
-  { label: 'Screener', short: 'Markets', path: '/markets', icon: LineChart, tint: '#30D158' },
-  { label: 'Sectors', path: '/sectors', icon: Layers, tint: '#BF5AF2',
-    match: (p) => p.startsWith('/sector') },
-  { label: 'Watchlist', short: 'Watch', path: '/watchlist', icon: Star, tint: '#FFD60A', badge: 'watchlist' },
+  { label: 'Today', path: '/', icon: Newspaper, tint: '#0A84FF' },
+  { label: 'Saved', path: '/saved', icon: Bookmark, tint: '#FF9F0A', badge: 'saved' },
+  { label: 'Topics', path: '/topics', icon: LayoutGrid, tint: '#BF5AF2' },
+  { label: 'Sources', path: '/sources', icon: Radio, tint: '#30D158' },
 ];
 
-export const TAB_ITEMS: NavItem[] = [
-  NAV_ITEMS[0], NAV_ITEMS[2], NAV_ITEMS[3], NAV_ITEMS[4],
-  { label: 'Topics', path: '/categories', icon: LayoutGrid, tint: '#FF375F',
-    match: (p) => p.startsWith('/categor') },
-];
+export const SEARCH_ITEM: NavItem = { label: 'Search', path: '/search', icon: Search, tint: '#8E8E93' };
 
-export function isActive(item: NavItem, pathname: string, search: string) {
-  if (item.match) return item.match(pathname, search);
-  return pathname === item.path || pathname.startsWith(item.path + '/');
+export function isActive(item: NavItem, pathname: string) {
+  if (item.path === '/') return pathname === '/';
+  const base = item.path.replace(/s$/, ''); // /topics → /topic, /sources → /source
+  return pathname === item.path || pathname.startsWith(item.path + '/') || pathname.startsWith(base + '/');
 }
 
-/** Largest-title text for the toolbar, derived from the route. */
-export function titleFor(pathname: string, search: string): string {
-  if (pathname === '/') return search.includes('saved=1') ? 'Saved' : 'Newsdesk';
-  if (pathname.startsWith('/markets')) return 'Screener';
-  if (pathname.startsWith('/sectors')) return 'Sectors';
-  if (pathname.startsWith('/sector/')) return 'Sector';
-  if (pathname.startsWith('/watchlist')) return 'Watchlist';
+/** Toolbar title from the route (pages with a large title override via their own header). */
+export function titleFor(pathname: string): string {
+  if (pathname === '/') return 'Today';
+  if (pathname.startsWith('/saved')) return 'Saved';
+  if (pathname.startsWith('/topics') || pathname.startsWith('/topic/')) return 'Topics';
+  if (pathname.startsWith('/sources') || pathname.startsWith('/source/')) return 'Sources';
+  if (pathname.startsWith('/search')) return 'Search';
   if (pathname.startsWith('/company/')) return pathname.split('/')[2] ?? 'Company';
-  if (pathname.startsWith('/categor')) return 'Topics';
   return 'Newsdesk';
 }
+
+/** Routes that are roots of a tab (no back button). */
+export const ROOT_PATHS = ['/', '/saved', '/topics', '/sources', '/search'];
