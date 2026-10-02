@@ -2,6 +2,7 @@ import { cn } from '@/lib/utils';
 import type { Story } from '@/lib/stories';
 import { coverage } from '@/lib/stories';
 import { useReadArticles } from '@/hooks/useReadArticles';
+import { useHoverPrefetch } from '@/hooks/useArticleSummary';
 import FeedSourceBadge from './FeedSourceBadge';
 import CategoryBadge from './CategoryBadge';
 import TimeAgo from './TimeAgo';
@@ -19,11 +20,12 @@ export default function LeadStory({ lead, others, onSelect }: Props) {
   const { isRead, markRead } = useReadArticles();
   const open = (s: Story) => { markRead(s.lead.link); onSelect(s); };
   const item = lead.lead;
+  const prefetch = useHoverPrefetch(lead);
 
   return (
     <div className="grid gap-4 lg:grid-cols-5">
       <article
-        role="link" tabIndex={0}
+        role="link" tabIndex={0} {...prefetch}
         onClick={() => open(lead)} onKeyDown={(e) => e.key === 'Enter' && open(lead)}
         className="card-interactive group relative isolate flex min-h-[300px] cursor-pointer flex-col justify-end overflow-hidden rounded-[var(--r-xl)] shadow-2 lg:col-span-3 lg:min-h-[380px]"
         style={{ background: 'linear-gradient(145deg, #3a2a22 0%, #1b1513 100%)' }}

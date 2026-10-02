@@ -8,7 +8,8 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "backend": "node backend/server.js",
-    "start": "concurrently \"npm run backend\" \"npm run dev\""
+    "start": "concurrently \"npm run backend\" \"npm run dev\"",
+    "test": "node --test \"backend/*.test.js\""
   },
   "dependencies": {
     "@tanstack/react-query": "^5.83.0",

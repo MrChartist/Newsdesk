@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils';
+import { useHoverPrefetch } from '@/hooks/useArticleSummary';
 import { type StoryProps, BookmarkButton, useStoryRead } from './NewsCard';
 import FeedSourceBadge from './FeedSourceBadge';
 import TimeAgo from './TimeAgo';
@@ -11,12 +12,14 @@ export default function NewsRow({ story, query, selected, domId, onOpen }: Story
   const item = story.lead;
   const { read, open } = useStoryRead(story);
   const go = () => open(onOpen);
+  const prefetch = useHoverPrefetch(story);
 
   return (
     <article
       id={domId}
       role="link"
       tabIndex={0}
+      {...prefetch}
       onClick={go}
       onKeyDown={(e) => { if (e.key === 'Enter') go(); }}
       className={cn(

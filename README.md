@@ -24,8 +24,17 @@ When Reuters, CNBC and BizToc all cover the same headline, Newsdesk shows **one 
 *   **Cards or List**: switch layout; your choice is remembered.
 *   **"N new stories"** pill: new arrivals wait behind a pill, so the list never jumps while you read.
 
+### Summaries, without AI
+Open any story and the reader leads with a **Summary** built by plain algorithms, not a language model:
+
+1.  The server fetches the article and pulls out the real text (navigation, ads, cookie banners and "related" lists are dropped).
+2.  It splits the text into sentences and ranks them with **TextRank**: sentences similar to many others score higher. Scores are nudged up for lead position and overlap with the headline.
+3.  The top three sentences are shown **verbatim and in original order** as *Key points*, with *Key figures* (₹ amounts, percentages, quantities) pulled out as chips, then the clean full text.
+
+Nothing is generated or reworded, so every line is the publisher's own wording. BizToc stubs are followed through to the real article. If a publisher blocks automatic reading, the reader says so and falls back to the feed's own description. Summaries start loading when you hover a story and are cached for six hours.
+
 ### Reader
-A sheet on phones, a centred panel on desktop. Step through stories with ← / →, save, **copy as a Telegram-ready post** (headline, source, link, `@MrChartist`), or open the original. Publishers that block embedding fall back to a clean "Read on source" card.
+A sheet on phones, a centred panel on desktop, with **Summary** and **Original** tabs. Step through stories with ← / →, switch between publishers of the same story, save, or **copy as a Telegram-ready post** (headline, two key points, source, link, `@MrChartist`). The original page runs in a sandbox with no access to the app's storage.
 
 ### Browse
 *   **Topics**: Markets, Economy, Business, Crypto, Commodities, Middle East, Defense, AI and more, with 24-hour unread counts.
@@ -64,6 +73,7 @@ Newsdesk shares its design tokens with [IPO Decode](https://ipodecode.mrchartist
 ```bash
 npm install
 npm run start     # backend :3001 + Vite :5185
+npm test          # backend unit tests (summariser, URL safety, company matching)
 ```
 
 Open `http://localhost:5185`.
@@ -75,12 +85,14 @@ Open `http://localhost:5185`.
 | `GET /api/feeds/:sourceId` | One source, live |
 | `GET /api/companies` | Symbol → company name directory |
 | `GET /api/company/:symbol` | Archived news mentioning a company |
-| `GET /api/article-proxy?url=` | Reader proxy |
+| `GET /api/summary?url=&title=&desc=` | Extractive summary, key figures and clean text |
+| `GET /api/article-proxy?url=` | Original-page proxy for the reader |
 
 ## 📂 Structure
 
 ```text
-backend/            server.js · feedProxy.js (fetch, clean, categorise) · db.js · companyMap.js · gnewsResolver.js
+backend/            server.js · feedProxy.js (fetch, clean, categorise) · summarize.js (TextRank) · safeFetch.js (SSRF guard)
+                    db.js · companyMap.js · gnewsResolver.js · *.test.js
 src/
   lib/stories.ts    clustering + time buckets
   lib/share.ts      Telegram-ready post / digest
@@ -94,7 +106,9 @@ src/
 
 ## Notes
 
-*   Company mentions come from a keyword map (`backend/companyMap.js`), so a few generic names can match unrelated stories. Treat the company pages as a convenience filter, not a verified tag.
+*   Company mentions come from a keyword map (`backend/companyMap.js`). Short tickers must match case-exactly and ambiguous single words (Titan, Reliance, Apollo…) need finance context, but the match is still keyword-based, so treat company pages as a convenience filter, not a verified tag.
+*   Some publishers (for example Livemint and NDTV) refuse automatic fetches from servers; those stories get a feed-based summary and a notice.
+*   Article and summary fetches only reach public internet addresses; localhost, private ranges and cloud metadata addresses are refused, including via redirects.
 *   Story clustering is heuristic; two different events with near-identical headlines can occasionally be merged.
 
 ---

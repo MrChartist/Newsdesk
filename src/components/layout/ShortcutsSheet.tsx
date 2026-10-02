@@ -8,7 +8,7 @@ export const openShortcuts = () => window.dispatchEvent(new Event(EVENT));
 const GROUPS: { title: string; rows: [string[], string][] }[] = [
   { title: 'Anywhere', rows: [[['⌘', 'K'], 'Command palette'], [['/'], 'Search'], [['?'], 'This sheet']] },
   { title: 'In a story list', rows: [[['J'], 'Next story'], [['K'], 'Previous story'], [['Enter'], 'Open story'], [['S'], 'Save for later'], [['M'], 'Mark as read']] },
-  { title: 'In the reader', rows: [[['→'], 'Next story'], [['←'], 'Previous story'], [['S'], 'Save'], [['Esc'], 'Close']] },
+  { title: 'In the reader', rows: [[['→'], 'Next story'], [['←'], 'Previous story'], [['R'], 'Summary'], [['O'], 'Original page'], [['S'], 'Save'], [['Esc'], 'Close']] },
 ];
 
 export default function ShortcutsSheet() {

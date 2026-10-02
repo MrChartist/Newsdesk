@@ -4,9 +4,10 @@ import { timeAgo } from './utils';
 
 const BRAND = '@MrChartist';
 
-/** Telegram-ready single post: short paragraphs, no emoji clutter. */
-export function formatPost(item: NewsItem): string {
-  return `${item.title}\n\n${item.source.name} · ${timeAgo(item.pubDate)}\n${item.link}\n\n${BRAND}`;
+/** Telegram-ready single post: short paragraphs, no emoji clutter. Includes the summary when we have one. */
+export function formatPost(item: NewsItem, summary: string[] = []): string {
+  const points = summary.slice(0, 2).join('\n\n');
+  return `${item.title}\n\n${points ? `${points}\n\n` : ''}${item.source.name} · ${timeAgo(item.pubDate)}\n${item.link}\n\n${BRAND}`;
 }
 
 /** Telegram-ready digest of several stories. */

@@ -4,6 +4,7 @@ import type { NewsItem } from '@/types/news';
 import type { Story } from '@/lib/stories';
 import { useBookmarks } from '@/hooks/useBookmarks';
 import { useReadArticles } from '@/hooks/useReadArticles';
+import { useHoverPrefetch } from '@/hooks/useArticleSummary';
 import FeedSourceBadge from './FeedSourceBadge';
 import CategoryBadge from './CategoryBadge';
 import TimeAgo from './TimeAgo';
@@ -50,12 +51,14 @@ export default function NewsCard({ story, query, selected, domId, onOpen }: Stor
   const isNew = Date.now() - story.time < 5 * 60 * 1000;
   const { read, open } = useStoryRead(story);
   const go = () => open(onOpen);
+  const prefetch = useHoverPrefetch(story);
 
   return (
     <article
       id={domId}
       role="link"
       tabIndex={0}
+      {...prefetch}
       onClick={go}
       onKeyDown={(e) => { if (e.key === 'Enter') go(); }}
       className={cn(

@@ -99,7 +99,7 @@ export default function NewsStream({
     const q = debounced.trim().toLowerCase();
     const cutoff = Date.now() - RANGES.find((r) => r.id === range)!.ms;
     const out = shown.filter((s) => {
-      if (!filtering && excludeIds?.has(s.id)) return false;
+      if (!q && excludeIds?.has(s.id)) return false; // already shown above, unless the user is searching
       if (topic && s.lead.category !== topic) return false;
       if (source && !s.items.some((i) => i.source.id === source)) return false;
       if (s.time < cutoff) return false;
@@ -113,7 +113,7 @@ export default function NewsStream({
     if (sort === 'covered') out.sort((a, b) => coverage(b) - coverage(a) || b.time - a.time);
     else out.sort((a, b) => b.time - a.time);
     return out;
-  }, [shown, debounced, source, topic, range, unreadIds, sort, filtering, excludeIds]);
+  }, [shown, debounced, source, topic, range, unreadIds, sort, excludeIds]);
 
   useEffect(() => { setPage(1); setSelected(-1); }, [debounced, source, topic, range, unreadOnly, sort]);
 

@@ -6,6 +6,8 @@ import type { NewsItem } from '@/types/news';
 import type { Story } from '@/lib/stories';
 import { formatPost, copyText } from '@/lib/share';
 import { useBookmarks } from '@/hooks/useBookmarks';
+import { useArticleSummary } from '@/hooks/useArticleSummary';
+import ReaderSummary from './ReaderSummary';
 import { markRead } from '@/hooks/useReadArticles';
 import CategoryBadge from './CategoryBadge';
 import FeedSourceBadge from './FeedSourceBadge';
@@ -19,11 +21,13 @@ interface Props {
 }
 
 type ReaderStatus = 'loading' | 'ready' | 'error';
+type Tab = 'summary' | 'original';
 
 /** Reader sheet — iOS-style sheet on phones, centred macOS panel on desktop. */
 export default function ArticleModal({ story, onClose, onPrev, onNext }: Props) {
   // Which publisher's version of the story is on screen
   const [activeLink, setActiveLink] = useState<string | null>(null);
+  const [tab, setTab] = useState<Tab>('summary');
   const [copied, setCopied] = useState<'link' | 'post' | null>(null);
   const [status, setStatus] = useState<ReaderStatus>('loading');
   const [srcDoc, setSrcDoc] = useState('');
@@ -35,7 +39,10 @@ export default function ArticleModal({ story, onClose, onPrev, onNext }: Props) 
   const item: NewsItem | null = story ? (story.items.find((i) => i.link === activeLink) ?? story.lead) : null;
   const saved = item ? isBookmarked(item.link) : false;
 
-  useEffect(() => { setActiveLink(null); }, [story?.id]);
+  useEffect(() => { setActiveLink(null); setTab('summary'); }, [story?.id]);
+  useEffect(() => { setTab('summary'); }, [activeLink]);
+
+  const summary = useArticleSummary(story, item);
 
   // Fetch the proxied article HTML so failures (403/502 bodies) can be detected
   // and replaced with the graceful "Read on source" card instead of raw JSON.
@@ -44,6 +51,7 @@ export default function ArticleModal({ story, onClose, onPrev, onNext }: Props) 
     if (!item) return;
     markRead(item.link);
     holdFocus();
+    if (tab !== 'original') return;
     setStatus('loading');
     setSrcDoc('');
     const ctrl = new AbortController();
@@ -56,7 +64,7 @@ export default function ArticleModal({ story, onClose, onPrev, onNext }: Props) 
       })
       .catch((err) => { if (err.name !== 'AbortError') setStatus('error'); });
     return () => ctrl.abort();
-  }, [item?.link]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [item?.link, tab]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const flash = useCallback((what: 'link' | 'post') => {
     setCopied(what);
@@ -72,6 +80,8 @@ export default function ArticleModal({ story, onClose, onPrev, onNext }: Props) 
       else if (e.key === 'ArrowRight' || e.key === 'j') onNext?.();
       else if (e.key === 'ArrowLeft' || e.key === 'k') onPrev?.();
       else if (e.key === 's' && item) toggle(item);
+      else if (e.key === 'o') setTab('original');
+      else if (e.key === 'r') setTab('summary');
     };
     window.addEventListener('keydown', onKey);
     document.body.style.overflow = 'hidden';
@@ -79,7 +89,7 @@ export default function ArticleModal({ story, onClose, onPrev, onNext }: Props) 
   }, [story, item, onClose, onNext, onPrev, toggle]);
 
   const copyLink = async () => { if (item && await copyText(item.link)) flash('link'); };
-  const copyPost = async () => { if (item && await copyText(formatPost(item))) flash('post'); };
+  const copyPost = async () => { if (item && await copyText(formatPost(item, summary.data?.summary))) flash('post'); };
   const share = async () => {
     if (!item) return;
     if (navigator.share) { try { await navigator.share({ title: item.title, url: item.link }); } catch { /* cancelled */ } }
@@ -134,16 +144,25 @@ export default function ArticleModal({ story, onClose, onPrev, onNext }: Props) 
               <button onClick={copyLink} className="icon-btn hidden sm:inline-flex" aria-label="Copy link" title="Copy link">
                 {copied === 'link' ? <Check className="h-[18px] w-[18px] text-profit" /> : <Copy className="h-[18px] w-[18px]" />}
               </button>
-              <a href={item.link} target="_blank" rel="noopener noreferrer" className="icon-btn" aria-label="Open original" title="Open original"><ExternalLink className="h-[18px] w-[18px]" /></a>
+              <a href={item.link} target="_blank" rel="noopener noreferrer" className="icon-btn max-sm:hidden" aria-label="Open on publisher site" title="Open on publisher site"><ExternalLink className="h-[18px] w-[18px]" /></a>
               <button onClick={onClose} className="icon-btn bg-[var(--mat-fill-2)]" aria-label="Close" title="Close (Esc)"><X className="h-[18px] w-[18px]" /></button>
 
+              <div className="segmented w-full sm:w-auto" role="tablist" aria-label="View">
+                {(['summary', 'original'] as const).map((t) => (
+                  <button key={t} role="tab" aria-selected={tab === t} onClick={() => setTab(t)}
+                    className={cn('segmented-item flex-1 justify-center sm:flex-none', tab === t && 'bg-card shadow-1')}>
+                    {t === 'summary' ? 'Summary' : 'Original'}
+                  </button>
+                ))}
+              </div>
+
               {story.items.length > 1 && (
-                <div className="flex w-full items-center gap-1.5 overflow-x-auto pt-1 scrollbar-none" role="tablist" aria-label="Coverage">
+                <div className="flex w-full items-center gap-1.5 overflow-x-auto pt-1 scrollbar-none" role="group" aria-label="Coverage">
                   <span className="eyebrow shrink-0 pr-1">Also from</span>
                   {story.items.map((i) => {
                     const active = i.link === item.link;
                     return (
-                      <button key={i.link} role="tab" aria-selected={active} onClick={() => setActiveLink(i.link)}
+                      <button key={i.link} aria-pressed={active} onClick={() => setActiveLink(i.link)}
                         className={cn('chip shrink-0 !py-1.5 transition-colors', active ? '!bg-primary !text-primary-foreground' : 'hover:bg-[var(--mat-fill-3)]')}>
                         <span className="h-2 w-2 rounded-full" style={{ background: i.source.color }} />
                         {i.source.name}
@@ -154,38 +173,37 @@ export default function ArticleModal({ story, onClose, onPrev, onNext }: Props) 
               )}
             </div>
 
-            <div className="relative flex-1 bg-white">
-              {status === 'loading' && (
+            <div className={cn('relative min-h-0 flex-1', tab === 'original' ? 'bg-white' : 'bg-card')}>
+              {tab === 'summary' && (
+                <ReaderSummary item={item} data={summary.data} loading={summary.isLoading} onOriginal={() => setTab('original')} />
+              )}
+
+              {tab === 'original' && status === 'loading' && (
                 <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-card">
                   <Loader2 className="mb-3 h-7 w-7 animate-spin text-primary" />
-                  <p className="text-sm font-medium">Opening article…</p>
+                  <p className="text-sm font-medium">Opening the original page…</p>
                   <p className="mt-1 text-xs text-muted-foreground">{item.source.name}</p>
                 </div>
               )}
 
-              {status === 'error' && (
+              {tab === 'original' && status === 'error' && (
                 <div className="absolute inset-0 z-10 flex items-center justify-center overflow-y-auto bg-card px-6 py-10">
                   <div className="max-w-xl text-center">
-                    {item.image && <img src={item.image} alt="" className="mb-6 h-48 w-full rounded-[var(--r-lg)] object-cover" />}
-                    <h2 className="mb-3 font-display text-2xl font-extrabold leading-tight tracking-tight">{item.title}</h2>
-                    <p className="mb-4 text-xs tnum text-muted-foreground">
-                      {new Date(item.pubDate).toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
-                      {' · '}
-                      {new Date(item.pubDate).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
-                    </p>
-                    <p className="mb-6 leading-relaxed text-foreground/80">{item.description}</p>
-                    <p className="mb-6 text-xs text-muted-foreground">This publisher blocks in-app reading or needs a subscription.</p>
-                    <a href={item.link} target="_blank" rel="noopener noreferrer" className="btn btn-primary !min-h-12 !px-6">
-                      Read on {item.source.name} <ExternalLink className="h-4 w-4" />
-                    </a>
+                    <h2 className="mb-3 font-display text-2xl font-extrabold leading-tight tracking-tight">This page can’t be shown here</h2>
+                    <p className="mb-6 text-sm text-muted-foreground">The publisher blocks in-app viewing or needs a subscription. The Summary tab still has the key points.</p>
+                    <div className="flex flex-wrap justify-center gap-3">
+                      <button onClick={() => setTab('summary')} className="btn btn-plain">Back to summary</button>
+                      <a href={item.link} target="_blank" rel="noopener noreferrer" className="btn btn-primary">Read on {item.source.name} <ExternalLink className="h-4 w-4" /></a>
+                    </div>
                   </div>
                 </div>
               )}
 
-              {status === 'ready' && (
+              {tab === 'original' && status === 'ready' && (
                 <iframe
                   key={item.link} title={item.title} srcDoc={srcDoc} className="h-full w-full border-0"
-                  sandbox="allow-same-origin allow-scripts allow-popups allow-forms" referrerPolicy="no-referrer" onLoad={holdFocus}
+                  /* No allow-same-origin: the publisher's scripts run in an opaque origin and can't reach the app's storage */
+                  sandbox="allow-scripts allow-popups allow-forms" referrerPolicy="no-referrer" onLoad={holdFocus}
                 />
               )}
             </div>
