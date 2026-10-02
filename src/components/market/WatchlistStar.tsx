@@ -8,22 +8,19 @@ interface Props {
   size?: number;
 }
 
-export default function WatchlistStar({ symbol, className, size = 16 }: Props) {
+export default function WatchlistStar({ symbol, className, size = 18 }: Props) {
   const { isWatched, toggle } = useWatchlist();
   const watched = isWatched(symbol);
 
   return (
     <button
-      onClick={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        toggle(symbol);
-      }}
+      onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggle(symbol); }}
       title={watched ? 'Remove from watchlist' : 'Add to watchlist'}
-      aria-label={watched ? 'Remove from watchlist' : 'Add to watchlist'}
+      aria-label={watched ? `Remove ${symbol} from watchlist` : `Add ${symbol} to watchlist`}
+      aria-pressed={watched}
       className={cn(
-        'p-1 rounded-md transition-colors shrink-0',
-        watched ? 'text-amber-400' : 'text-muted-foreground hover:text-amber-400',
+        'shrink-0 rounded-full p-1.5 transition-all active:scale-90',
+        watched ? 'text-ios-yellow' : 'text-muted-foreground/70 hover:text-ios-yellow',
         className,
       )}
     >

@@ -2,6 +2,7 @@ import { Bookmark } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { NewsItem } from '@/types/news';
 import { useBookmarks } from '@/hooks/useBookmarks';
+import { useReadArticles } from '@/hooks/useReadArticles';
 import FeedSourceBadge from './FeedSourceBadge';
 import CategoryBadge from './CategoryBadge';
 import TimeAgo from './TimeAgo';
@@ -12,78 +13,82 @@ interface Props {
   onSelect?: (item: NewsItem) => void;
 }
 
-export default function NewsCard({ item, onSelect }: Props) {
-  const isNew = (Date.now() - new Date(item.pubDate).getTime()) < 5 * 60 * 1000;
+export function BookmarkButton({ item, className }: { item: NewsItem; className?: string }) {
   const { isBookmarked, toggle } = useBookmarks();
   const saved = isBookmarked(item.link);
+  return (
+    <button
+      onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggle(item); }}
+      title={saved ? 'Remove from saved' : 'Save article'}
+      aria-label={saved ? 'Remove from saved' : 'Save article'}
+      aria-pressed={saved}
+      className={cn(
+        'glass flex h-9 w-9 items-center justify-center rounded-full transition-all',
+        saved ? 'text-ios-orange opacity-100' : 'text-foreground/80 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 max-lg:opacity-100',
+        className,
+      )}
+    >
+      <Bookmark className={cn('w-4 h-4', saved && 'fill-current')} />
+    </button>
+  );
+}
 
-  const handleClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    onSelect?.(item);
-  };
+export default function NewsCard({ item, onSelect }: Props) {
+  const isNew = Date.now() - new Date(item.pubDate).getTime() < 5 * 60 * 1000;
+  const { isRead, markRead } = useReadArticles();
+  const read = isRead(item.link);
 
-  const handleBookmark = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    toggle(item);
-  };
+  const open = () => { markRead(item.link); onSelect?.(item); };
 
   return (
-    <div
-      onClick={handleClick}
-      className={cn("premium-card flex flex-col group cursor-pointer overflow-hidden relative", isNew && "row-new")}
+    <article
+      role="link"
+      tabIndex={0}
+      onClick={open}
+      onKeyDown={(e) => { if (e.key === 'Enter') open(); }}
+      className={cn('card card-interactive group relative flex cursor-pointer flex-col overflow-hidden', isNew && 'row-new')}
     >
-      {/* Bookmark toggle */}
-      <button
-        onClick={handleBookmark}
-        title={saved ? 'Remove from saved' : 'Save article'}
-        aria-label={saved ? 'Remove from saved' : 'Save article'}
-        className={cn(
-          "absolute top-2.5 right-2.5 z-10 p-1.5 rounded-lg backdrop-blur-md ring-1 transition-all",
-          saved
-            ? "bg-primary/20 ring-primary/40 text-primary opacity-100"
-            : "bg-black/40 ring-white/10 text-white/80 opacity-0 group-hover:opacity-100 hover:text-primary"
-        )}
-      >
-        <Bookmark className={cn("w-3.5 h-3.5", saved && "fill-current")} />
-      </button>
-
       {item.image && (
-        <div className="w-full h-40 overflow-hidden relative">
+        <div className="relative aspect-[16/9] w-full overflow-hidden bg-[var(--mat-fill-1)]">
           <img
             src={item.image}
             alt=""
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
             loading="lazy"
-            onError={(e) => { e.currentTarget.style.display = 'none'; }}
+            className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04]"
+            onError={(e) => { (e.currentTarget.parentElement as HTMLElement).style.display = 'none'; }}
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+          <BookmarkButton item={item} className="absolute top-3 right-3" />
         </div>
       )}
 
-      <div className="p-4 flex flex-col flex-1 gap-3">
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-2 flex-wrap">
-            <FeedSourceBadge source={item.source} />
-            <CategoryBadge category={item.category} />
-          </div>
-          <TimeAgo date={item.pubDate} className="shrink-0" />
+      <div className="flex flex-1 flex-col gap-2.5 p-5">
+        <div className="flex items-center gap-2">
+          <FeedSourceBadge source={item.source} />
+          <span className="text-muted-foreground/50">·</span>
+          <TimeAgo date={item.pubDate} />
+          {!item.image && <BookmarkButton item={item} className="ml-auto !h-8 !w-8 !shadow-none" />}
         </div>
 
-        <h3 className="font-display font-semibold text-base leading-snug group-hover:text-primary transition-colors line-clamp-3">
+        <h3
+          className={cn(
+            'font-display font-bold text-[1.0625rem] leading-snug tracking-tight line-clamp-3 transition-colors',
+            read ? 'text-foreground/60' : 'text-foreground',
+          )}
+        >
           {item.title}
         </h3>
 
-        <p className="text-sm text-muted-foreground line-clamp-3 leading-relaxed">
-          {item.description}
-        </p>
+        {item.description && (
+          <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed">{item.description}</p>
+        )}
 
-        <div className="mt-auto pt-4 flex flex-wrap items-center gap-1.5">
-          {item.companies.map((symbol) => (
+        <div className="mt-auto flex flex-wrap items-center gap-1.5 pt-3">
+          <CategoryBadge category={item.category} />
+          {item.companies.slice(0, 4).map((symbol) => (
             <CompanyMentionTag key={symbol} symbol={symbol} />
           ))}
         </div>
       </div>
-    </div>
+    </article>
   );
 }

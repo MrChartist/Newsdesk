@@ -1,12 +1,14 @@
 import { useState, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { ExternalLink, TrendingUp, TrendingDown, BarChart3 } from 'lucide-react';
-import { cn, formatPrice, formatChange, formatMarketCap, formatVolume, getRecommendationLabel } from '@/lib/utils';
+import { ExternalLink, BarChart3 } from 'lucide-react';
+import { cn, formatPrice, formatChange, formatMarketCap, formatVolume, rangePosition, offHigh } from '@/lib/utils';
 import NewsFeed from '@/components/news/NewsFeed';
 import ArticleModal from '@/components/news/ArticleModal';
 import WatchlistStar from '@/components/market/WatchlistStar';
+import { SectionHeader, ChangePill, RangeBar } from '@/components/ui/Section';
 import { useStocks } from '@/hooks/useStockData';
+import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 import { getSectorMeta } from '@/data/sectors';
 import type { NewsItem } from '@/types/news';
 import type { StockData } from '@/types/stock';
@@ -19,6 +21,7 @@ async function fetchCompanyData(symbol: string) {
 
 export default function CompanyPage() {
   const { symbol } = useParams();
+  useDocumentTitle(symbol);
   const [selectedArticle, setSelectedArticle] = useState<NewsItem | null>(null);
 
   const { data, isLoading } = useQuery({
@@ -27,7 +30,6 @@ export default function CompanyPage() {
     enabled: !!symbol,
     refetchInterval: 60000,
   });
-
   const { data: allStocks } = useStocks();
 
   const peers = useMemo(() => {
@@ -39,186 +41,155 @@ export default function CompanyPage() {
   }, [allStocks, data?.stock?.sector, symbol]);
 
   if (isLoading) {
-    return <div className="text-center py-20 animate-pulse text-muted-foreground">Loading {symbol} data...</div>;
+    return (
+      <div className="space-y-5">
+        <div className="card skeleton !rounded-[var(--r-xl)] h-44" />
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">{[0, 1, 2, 3].map((i) => <div key={i} className="card skeleton !rounded-[var(--r-lg)] h-24" />)}</div>
+      </div>
+    );
   }
 
   if (!data?.stock) {
-    return <div className="text-center py-20 text-muted-foreground">No data found for {symbol}</div>;
+    return (
+      <div className="space-y-3 py-20 text-center text-muted-foreground">
+        <p>No data found for {symbol}.</p>
+        <Link to="/markets" className="font-semibold text-primary">Open the screener</Link>
+      </div>
+    );
   }
 
   const { stock, news, name } = data;
-  const isProfit = stock.change >= 0;
-  const rec = getRecommendationLabel(stock.recommendAll);
+  const isProfit = (stock.change ?? 0) >= 0;
   const sectorMeta = getSectorMeta(stock.sector);
+  const pos = rangePosition(stock.price, stock.low52W, stock.high52W);
+  const fromHigh = offHigh(stock.price, stock.high52W);
+  const fromLow = stock.price != null && stock.low52W ? ((stock.price - stock.low52W) / stock.low52W) * 100 : null;
 
   return (
-    <div className="space-y-6 pb-24 max-w-7xl mx-auto">
-      {/* Header Profile */}
-      <div className="surface-card p-6 flex flex-col md:flex-row justify-between gap-6">
-        <div>
-          <div className="flex items-center gap-3 mb-2">
-            <h1 className="text-3xl font-display font-bold">{symbol}</h1>
-            <WatchlistStar symbol={symbol!} size={22} />
-            {stock.sector && (
-              <Link
-                to={`/sector/${encodeURIComponent(stock.sector)}`}
-                className="px-2.5 py-1 rounded-full text-xs font-medium transition-colors hover:opacity-80"
-                style={{ backgroundColor: `${sectorMeta.color}22`, color: sectorMeta.color }}
-              >
-                {stock.sector}
-              </Link>
-            )}
-          </div>
-          <p className="text-muted-foreground text-lg">{name || stock.name}</p>
-          {stock.industry && <p className="text-xs text-muted-foreground/70 mt-1">{stock.industry}</p>}
-        </div>
-
-        <div className="flex flex-col md:items-end">
-          <div className="flex items-center gap-3">
-            <span className="font-mono-data text-4xl font-bold">{formatPrice(stock.price)}</span>
-            <div className={cn("flex flex-col font-mono-data", isProfit ? "text-profit" : "text-loss")}>
-              <span className="flex items-center text-lg font-bold">
-                {isProfit ? <TrendingUp className="w-5 h-5 mr-1"/> : <TrendingDown className="w-5 h-5 mr-1"/>}
-                {formatChange(stock.change)}
-              </span>
-              <span className="text-sm opacity-80">{isProfit ? '+' : ''}₹{stock.changeAbs?.toFixed(2)}</span>
-            </div>
-          </div>
-          <p className="text-xs text-muted-foreground mt-2">Live from NSE via TradingView</p>
-        </div>
-      </div>
-
-      {/* Grid Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="surface-card p-4 flex flex-col justify-between">
-          <span className="text-sm text-muted-foreground">Market Cap</span>
-          <span className="text-xl font-mono-data font-semibold">{formatMarketCap(stock.marketCap)}</span>
-        </div>
-        <div className="surface-card p-4 flex flex-col justify-between">
-          <span className="text-sm text-muted-foreground">Volume</span>
-          <span className="text-xl font-mono-data font-semibold">{formatVolume(stock.volume)}</span>
-        </div>
-        <div className="surface-card p-4 flex flex-col justify-between">
-          <span className="text-sm text-muted-foreground">Technical Rating</span>
-          <span className={cn("text-xl font-display font-bold", rec.color)}>{rec.label}</span>
-        </div>
-        <div className="surface-card p-4 flex flex-col justify-between">
-          <span className="text-sm text-muted-foreground">52W Range</span>
-          <div className="w-full mt-2">
-            <div className="flex justify-between text-xs font-mono-data text-muted-foreground mb-1">
-              <span>{formatPrice(stock.low52W)}</span>
-              <span>{formatPrice(stock.high52W)}</span>
-            </div>
-            <div className="h-2 w-full bg-white/10 rounded-full overflow-hidden relative">
-              {stock.price && stock.low52W && stock.high52W && (
-                <div
-                  className="absolute top-0 bottom-0 w-1.5 bg-primary shadow-[0_0_8px_var(--primary)]"
-                  style={{ left: `${Math.max(0, Math.min(100, ((stock.price - stock.low52W) / (stock.high52W - stock.low52W)) * 100))}%` }}
-                />
+    <div className="space-y-8">
+      <section className="card relative overflow-hidden rounded-[var(--r-xl)] p-6 sm:p-7">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0"
+          style={{ background: `radial-gradient(80% 140% at 100% 0%, hsl(var(--ios-${isProfit ? 'green' : 'red'}) / 0.14), transparent 65%)` }}
+        />
+        <div className="relative flex flex-col justify-between gap-6 md:flex-row md:items-end">
+          <div className="min-w-0">
+            <div className="mb-1 flex flex-wrap items-center gap-2">
+              <h1 className="large-title">{symbol}</h1>
+              <WatchlistStar symbol={symbol!} size={24} />
+              {stock.sector && (
+                <Link
+                  to={`/sector/${encodeURIComponent(stock.sector)}`}
+                  className="chip !px-3 !py-1.5 text-[0.75rem]"
+                  style={{ background: `${sectorMeta.color}26`, color: `color-mix(in srgb, ${sectorMeta.color} 70%, hsl(var(--foreground)))` }}
+                >
+                  {stock.sector}
+                </Link>
               )}
             </div>
+            <p className="text-lg text-muted-foreground">{name || stock.name}</p>
+            {stock.industry && <p className="mt-0.5 text-xs text-muted-foreground/80">{stock.industry}</p>}
           </div>
-        </div>
-      </div>
 
-      {/* Performance + momentum */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        <PerfStat label="1 Week" value={stock.perfWeek} />
-        <PerfStat label="1 Month" value={stock.perfMonth} />
-        <PerfStat label="3 Months" value={stock.perf3Month} />
-        <div className="surface-card p-4">
-          <span className="text-sm text-muted-foreground">RSI (14)</span>
-          <div className="flex items-baseline gap-2 mt-1">
-            <span className={cn('text-xl font-mono-data font-semibold', stock.rsi == null ? '' : stock.rsi > 70 ? 'text-loss' : stock.rsi < 30 ? 'text-profit' : '')}>
-              {stock.rsi != null ? stock.rsi.toFixed(1) : '—'}
-            </span>
-            {stock.rsi != null && (
-              <span className="text-[11px] text-muted-foreground">
-                {stock.rsi > 70 ? 'Overbought' : stock.rsi < 30 ? 'Oversold' : 'Neutral'}
-              </span>
-            )}
+          <div className="md:text-right">
+            <div className="flex items-center gap-3 md:justify-end">
+              <span className="font-display text-[2.5rem] font-extrabold leading-none tracking-tight tnum">{formatPrice(stock.price)}</span>
+            </div>
+            <div className={cn('mt-2 flex items-center gap-2 md:justify-end', isProfit ? 'text-profit' : 'text-loss')}>
+              <ChangePill value={stock.change} className="!text-sm" />
+              <span className="text-sm font-semibold tnum">{isProfit ? '+' : ''}₹{stock.changeAbs?.toFixed(2)}</span>
+            </div>
+            <p className="mt-2 text-xs text-muted-foreground">Live from NSE via TradingView</p>
           </div>
         </div>
-        <div className="surface-card p-4">
-          <span className="text-sm text-muted-foreground">ADX (trend)</span>
-          <div className="flex items-baseline gap-2 mt-1">
-            <span className="text-xl font-mono-data font-semibold">{stock.adx != null ? stock.adx.toFixed(1) : '—'}</span>
-            {stock.adx != null && (
-              <span className="text-[11px] text-muted-foreground">{stock.adx > 25 ? 'Trending' : 'Range-bound'}</span>
-            )}
-          </div>
-        </div>
-      </div>
+      </section>
 
-      {/* Sector peers */}
+      <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <Tile label="Market cap" value={formatMarketCap(stock.marketCap)} />
+        <Tile label="Volume" value={formatVolume(stock.volume)} />
+        <Tile label="Off 52W high" value={fromHigh != null ? formatChange(fromHigh) : '—'} tone={fromHigh != null && fromHigh > -5 ? 'profit' : undefined} />
+        <Tile label="Above 52W low" value={fromLow != null ? formatChange(fromLow) : '—'} />
+      </section>
+
+      <section className="grid gap-3 lg:grid-cols-5">
+        <div className="card p-5 lg:col-span-2">
+          <div className="mb-4 flex items-baseline justify-between">
+            <span className="text-[0.8125rem] font-medium text-muted-foreground">52-week range</span>
+            {pos != null && <span className="text-xs font-semibold tnum text-muted-foreground">{pos.toFixed(0)}% of range</span>}
+          </div>
+          <RangeBar position={pos} className="!h-2" />
+          <div className="mt-2.5 flex justify-between text-sm font-semibold tnum">
+            <span>{formatPrice(stock.low52W)}</span>
+            <span>{formatPrice(stock.high52W)}</span>
+          </div>
+        </div>
+        <div className="grid grid-cols-3 gap-3 lg:col-span-3">
+          <Perf label="1 week" value={stock.perfWeek} />
+          <Perf label="1 month" value={stock.perfMonth} />
+          <Perf label="3 months" value={stock.perf3Month} />
+        </div>
+      </section>
+
       {peers.length > 0 && (
-        <div className="surface-card p-5">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-display font-semibold">Sector Peers — {stock.sector}</h2>
-            <Link to={`/sector/${encodeURIComponent(stock.sector)}`} className="text-xs text-primary hover:underline">
-              View sector →
-            </Link>
+        <section>
+          <SectionHeader title={`Peers · ${stock.sector}`} to={`/sector/${encodeURIComponent(stock.sector)}`} toLabel="View sector" />
+          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6">
+            {peers.map((p: StockData) => (
+              <Link key={p.symbol} to={`/company/${p.symbol}`} className="card card-interactive !rounded-[var(--r-md)] px-3.5 py-3">
+                <p className="truncate text-xs font-bold">{p.symbol}</p>
+                <p className="mt-0.5 text-sm font-semibold tnum">{formatPrice(p.price)}</p>
+                <p className={cn('text-xs font-bold tnum', (p.change ?? 0) >= 0 ? 'text-profit' : 'text-loss')}>{formatChange(p.change)}</p>
+              </Link>
+            ))}
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
-            {peers.map((p: StockData) => {
-              const pu = (p.change ?? 0) >= 0;
-              return (
-                <Link
-                  key={p.symbol}
-                  to={`/company/${p.symbol}`}
-                  className="rounded-xl bg-white/[0.03] ring-1 ring-white/5 px-3 py-2.5 hover:ring-white/15 transition-all"
-                >
-                  <p className="font-mono-data text-xs font-semibold truncate">{p.symbol}</p>
-                  <p className="font-mono-data text-sm mt-0.5">{formatPrice(p.price)}</p>
-                  <p className={cn('font-mono-data text-[11px]', pu ? 'text-profit' : 'text-loss')}>{formatChange(p.change)}</p>
-                </Link>
-              );
-            })}
-          </div>
-        </div>
+        </section>
       )}
 
-      {/* TradingView chart link */}
       <a
         href={`https://www.tradingview.com/symbols/NSE-${symbol}/`}
         target="_blank"
         rel="noopener noreferrer"
-        className="flex items-center justify-between p-4 rounded-xl bg-primary/10 border border-primary/20 text-primary hover:bg-primary/20 transition-colors"
+        className="card card-interactive flex items-center gap-3.5 !rounded-[var(--r-lg)] p-4"
       >
-        <div className="flex items-center gap-3">
-          <BarChart3 className="w-5 h-5" />
-          <span className="font-semibold">Open interactive chart</span>
-          <span className="text-sm opacity-80">— Full technicals & price history on TradingView</span>
-        </div>
-        <ExternalLink className="w-5 h-5" />
+        <span className="squircle !h-10 !w-10 !rounded-[11px]" style={{ background: '#0A84FF' }}><BarChart3 className="h-5 w-5" /></span>
+        <span className="min-w-0 flex-1">
+          <span className="block font-bold">Open interactive chart</span>
+          <span className="block truncate text-sm text-muted-foreground">Full price history on TradingView</span>
+        </span>
+        <ExternalLink className="h-5 w-5 text-muted-foreground" />
       </a>
 
-      {/* News Feed */}
-      <div className="pt-4">
-        <h2 className="text-2xl font-display font-semibold mb-6 flex items-center gap-2">
-          Company Intelligence
-          <span className="text-sm text-muted-foreground font-normal px-2 py-0.5 rounded-full bg-white/5">{news?.count || 0} articles</span>
-        </h2>
+      <section>
+        <SectionHeader title="Company news" count={news?.count || 0} />
         <NewsFeed
           items={news?.items || []}
-          isLoading={isLoading}
           onSelectArticle={setSelectedArticle}
           emptyTitle={`No recent news for ${symbol}`}
-          emptyHint="News mentioning this company will appear here as it's archived."
+          emptyHint="News mentioning this company will appear here as it’s archived."
         />
-      </div>
+      </section>
 
       <ArticleModal item={selectedArticle} onClose={() => setSelectedArticle(null)} />
     </div>
   );
 }
 
-function PerfStat({ label, value }: { label: string; value: number | null }) {
+function Tile({ label, value, tone }: { label: string; value: string; tone?: 'profit' | 'loss' }) {
+  return (
+    <div className="card p-4">
+      <span className="text-[0.8125rem] font-medium text-muted-foreground">{label}</span>
+      <p className={cn('mt-1 font-display text-xl font-extrabold tracking-tight tnum', tone === 'profit' && 'text-profit', tone === 'loss' && 'text-loss')}>{value}</p>
+    </div>
+  );
+}
+
+function Perf({ label, value, className }: { label: string; value: number | null; className?: string }) {
   const up = (value ?? 0) >= 0;
   return (
-    <div className="surface-card p-4">
-      <span className="text-sm text-muted-foreground">{label}</span>
-      <p className={cn('text-xl font-mono-data font-semibold mt-1', value == null ? 'text-muted-foreground' : up ? 'text-profit' : 'text-loss')}>
+    <div className={cn('card p-4', className)}>
+      <span className="text-[0.8125rem] font-medium text-muted-foreground">{label}</span>
+      <p className={cn('mt-1 font-display text-xl font-extrabold tracking-tight tnum', value == null ? 'text-muted-foreground' : up ? 'text-profit' : 'text-loss')}>
         {formatChange(value)}
       </p>
     </div>

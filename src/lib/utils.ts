@@ -38,15 +38,6 @@ export function formatVolume(value: number | null | undefined): string {
   return value.toLocaleString('en-IN');
 }
 
-export function getRecommendationLabel(value: number | null | undefined): { label: string; color: string } {
-  if (value == null) return { label: 'N/A', color: 'text-muted-foreground' };
-  if (value >= 0.5) return { label: 'Strong Buy', color: 'text-profit' };
-  if (value >= 0.1) return { label: 'Buy', color: 'text-profit' };
-  if (value > -0.1) return { label: 'Neutral', color: 'text-warning' };
-  if (value > -0.5) return { label: 'Sell', color: 'text-loss' };
-  return { label: 'Strong Sell', color: 'text-loss' };
-}
-
 export function timeAgo(dateStr: string): string {
   const now = new Date();
   const date = new Date(dateStr);
@@ -60,4 +51,29 @@ export function timeAgo(dateStr: string): string {
   if (diffHr < 24) return `${diffHr}h ago`;
   if (diffDay < 7) return `${diffDay}d ago`;
   return date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+}
+
+/** Where price sits inside its 52-week range, 0–100 (null if unknown). */
+export function rangePosition(
+  price: number | null | undefined,
+  low: number | null | undefined,
+  high: number | null | undefined,
+): number | null {
+  if (price == null || low == null || high == null || high <= low) return null;
+  return Math.max(0, Math.min(100, ((price - low) / (high - low)) * 100));
+}
+
+/** % distance of price below its 52-week high (0 = at the high). */
+export function offHigh(price: number | null | undefined, high: number | null | undefined): number | null {
+  if (price == null || high == null || high <= 0) return null;
+  return ((price - high) / high) * 100;
+}
+
+export function formatDateIN(d: Date = new Date()): string {
+  return d.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' });
+}
+
+export function greeting(d: Date = new Date()): string {
+  const h = Number(d.toLocaleString('en-IN', { hour: 'numeric', hour12: false, timeZone: 'Asia/Kolkata' }));
+  return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
 }

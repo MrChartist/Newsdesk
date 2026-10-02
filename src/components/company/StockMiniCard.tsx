@@ -1,6 +1,6 @@
-import { cn, formatPrice, formatChange, getRecommendationLabel } from '@/lib/utils';
-import { TrendingUp, TrendingDown } from 'lucide-react';
+import { cn, formatPrice, formatChange, rangePosition } from '@/lib/utils';
 import type { StockData } from '@/types/stock';
+import { RangeBar } from '../ui/Section';
 
 interface Props {
   stock: StockData;
@@ -9,43 +9,35 @@ interface Props {
 }
 
 export default function StockMiniCard({ stock, compact = false, className }: Props) {
-  const rec = getRecommendationLabel(stock.recommendAll);
+  const up = (stock.change ?? 0) >= 0;
+  const pos = rangePosition(stock.price, stock.low52W, stock.high52W);
 
   if (compact) {
     return (
-      <span className={cn('inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-white/5 ring-1 ring-white/5 text-xs font-mono-data', className)}>
-        <span className="font-semibold">{stock.symbol}</span>
+      <span className={cn('inline-flex items-center gap-1.5 rounded-full bg-[var(--mat-fill-2)] px-2.5 py-1 text-xs tnum', className)}>
+        <span className="font-bold">{stock.symbol}</span>
         <span>{formatPrice(stock.price)}</span>
-        <span className={stock.change && stock.change >= 0 ? 'text-profit' : 'text-loss'}>
-          {formatChange(stock.change)}
-        </span>
+        <span className={up ? 'text-profit' : 'text-loss'}>{formatChange(stock.change)}</span>
       </span>
     );
   }
 
   return (
-    <div className={cn('flex items-center gap-3 px-3 py-2 rounded-xl bg-white/[0.03] ring-1 ring-white/5', className)}>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <span className="font-mono-data text-sm font-bold">{stock.symbol}</span>
-          <span className="font-mono-data text-sm">{formatPrice(stock.price)}</span>
-          <span className={cn('font-mono-data text-xs flex items-center gap-0.5', stock.change && stock.change >= 0 ? 'text-profit' : 'text-loss')}>
-            {stock.change && stock.change >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-            {formatChange(stock.change)}
-          </span>
-        </div>
-        <div className="flex items-center gap-2 mt-0.5">
-          {stock.sector && (
-            <span className="text-[10px] text-muted-foreground">{stock.sector}</span>
-          )}
-          <span className={cn('text-[10px] font-semibold', rec.color)}>{rec.label}</span>
-          {stock.rsi != null && (
-            <span className={cn('text-[10px]', stock.rsi > 70 ? 'text-loss' : stock.rsi < 30 ? 'text-profit' : 'text-muted-foreground')}>
-              RSI {stock.rsi.toFixed(0)}
-            </span>
-          )}
-        </div>
+    <div className={cn('w-[230px] px-3.5 py-3', className)}>
+      <div className="flex items-baseline justify-between gap-3">
+        <span className="font-display text-sm font-extrabold">{stock.symbol}</span>
+        <span className={cn('text-xs font-bold tnum', up ? 'text-profit' : 'text-loss')}>{formatChange(stock.change)}</span>
       </div>
+      <p className="truncate text-xs text-muted-foreground">{stock.name}</p>
+      <p className="mt-1.5 text-base font-bold tnum">{formatPrice(stock.price)}</p>
+      {pos != null && (
+        <div className="mt-2.5">
+          <RangeBar position={pos} />
+          <div className="mt-1 flex justify-between text-[10px] text-muted-foreground tnum">
+            <span>52W low</span><span>52W high</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,20 +1,32 @@
 import { useMemo, useState } from 'react';
-import { Search, X, Star, LineChart, ArrowDownWideNarrow } from 'lucide-react';
+import { Search, X, Star } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { useStocks } from '@/hooks/useStockData';
 import { useWatchlist } from '@/hooks/useWatchlist';
+import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 import StockTable from '@/components/market/StockTable';
-import { cn, formatMarketCap } from '@/lib/utils';
+import { PageHeader, Stat } from '@/components/ui/Section';
+import { cn, formatMarketCap, rangePosition } from '@/lib/utils';
+import type { StockData } from '@/types/stock';
 
-const selectClass =
-  'appearance-none rounded-xl bg-surface ring-1 ring-white/5 text-sm pl-3 pr-8 py-2.5 ' +
-  'text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all cursor-pointer';
+type Preset = 'all' | 'gainers' | 'losers' | 'high52' | 'low52';
+
+const PRESETS: { id: Preset; label: string; test: (s: StockData) => boolean }[] = [
+  { id: 'all', label: 'All', test: () => true },
+  { id: 'gainers', label: 'Gainers', test: (s) => (s.change ?? 0) > 0 },
+  { id: 'losers', label: 'Losers', test: (s) => (s.change ?? 0) < 0 },
+  { id: 'high52', label: 'Near 52W high', test: (s) => (rangePosition(s.price, s.low52W, s.high52W) ?? -1) >= 95 },
+  { id: 'low52', label: 'Near 52W low', test: (s) => { const p = rangePosition(s.price, s.low52W, s.high52W); return p != null && p <= 5; } },
+];
 
 export default function MarketsPage() {
+  useDocumentTitle('Screener');
   const { data, isLoading } = useStocks();
   const { symbols: watched, count: watchedCount } = useWatchlist();
   const [query, setQuery] = useState('');
   const [sector, setSector] = useState('');
   const [watchOnly, setWatchOnly] = useState(false);
+  const [preset, setPreset] = useState<Preset>('all');
 
   const allStocks = useMemo(() => (data ? Object.values(data.stocks) : []), [data]);
   const sectors = useMemo(
@@ -24,109 +36,85 @@ export default function MarketsPage() {
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
+    const presetTest = PRESETS.find((p) => p.id === preset)!.test;
     return allStocks.filter((s) => {
       if (watchOnly && !watched.includes(s.symbol)) return false;
       if (sector && s.sector !== sector) return false;
-      if (q && !(
-        s.symbol.toLowerCase().includes(q) ||
-        s.name?.toLowerCase().includes(q) ||
-        s.sector?.toLowerCase().includes(q)
-      )) return false;
+      if (!presetTest(s)) return false;
+      if (q && !(s.symbol.toLowerCase().includes(q) || s.name?.toLowerCase().includes(q) || s.sector?.toLowerCase().includes(q))) return false;
       return true;
     });
-  }, [allStocks, query, sector, watchOnly, watched]);
+  }, [allStocks, query, sector, watchOnly, watched, preset]);
 
   const advancers = filtered.filter((s) => (s.change ?? 0) > 0).length;
   const decliners = filtered.filter((s) => (s.change ?? 0) < 0).length;
   const totalCap = filtered.reduce((a, s) => a + (s.marketCap || 0), 0);
 
   return (
-    <div className="space-y-5 pb-12 max-w-7xl mx-auto">
-      {/* Header */}
-      <div className="surface-card p-6">
-        <div className="flex items-center gap-3 mb-1">
-          <div className="p-2 rounded-xl bg-primary/15 text-primary">
-            <LineChart className="w-6 h-6" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-display font-bold">Market Screener</h1>
-            <p className="text-sm text-muted-foreground">Live NSE universe via TradingView — click any column to sort.</p>
-          </div>
-        </div>
+    <div className="space-y-5">
+      <PageHeader
+        eyebrow="NSE universe"
+        title="Screener"
+        subtitle="Every tracked stock, live from TradingView. Tap a column to sort, a row to open the company."
+      />
 
-        {/* Breadth summary */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-5">
-          <Stat label="Stocks" value={filtered.length.toString()} />
-          <Stat label="Advancing" value={advancers.toString()} valueClass="text-profit" />
-          <Stat label="Declining" value={decliners.toString()} valueClass="text-loss" />
-          <Stat label="Total Mkt Cap" value={formatMarketCap(totalCap)} />
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <Stat label="Stocks" value={filtered.length.toLocaleString('en-IN')} />
+        <Stat label="Advancing" value={advancers.toLocaleString('en-IN')} tone="profit" />
+        <Stat label="Declining" value={decliners.toLocaleString('en-IN')} tone="loss" />
+        <Stat label="Total market cap" value={formatMarketCap(totalCap)} />
+      </div>
+
+      <div className="-mx-4 overflow-x-auto px-4 scrollbar-none sm:mx-0 sm:px-0">
+        <div className="segmented" role="tablist" aria-label="Quick filters">
+          {PRESETS.map((p) => (
+            <button key={p.id} role="tab" aria-selected={preset === p.id} onClick={() => setPreset(p.id)} className="segmented-item">
+              {preset === p.id && (
+                <motion.span layoutId="preset-pill" className="absolute inset-0 rounded-full bg-card shadow-1" transition={{ type: 'spring', stiffness: 420, damping: 34 }} />
+              )}
+              <span className="relative">{p.label}</span>
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* Controls */}
-      <div className="flex flex-col sm:flex-row sm:items-center gap-2.5">
-        <div className="relative flex-1 min-w-0">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+      <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center">
+        <div className="relative min-w-0 flex-1">
+          <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input
-            type="text"
+            type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search symbol, company, sector…"
-            className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-surface ring-1 ring-white/5 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all"
+            placeholder="Filter by symbol, company or sector"
+            aria-label="Filter stocks"
+            className="field !pl-10 !pr-10 [&::-webkit-search-cancel-button]:hidden"
           />
           {query && (
-            <button
-              onClick={() => setQuery('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              aria-label="Clear search"
-            >
-              <X className="w-4 h-4" />
+            <button onClick={() => setQuery('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-full p-1 text-muted-foreground hover:text-foreground" aria-label="Clear filter">
+              <X className="h-4 w-4" />
             </button>
           )}
         </div>
-
-        <div className="flex items-center gap-2.5 shrink-0">
-          <div className="relative">
-            <select value={sector} onChange={(e) => setSector(e.target.value)} className={selectClass} aria-label="Filter by sector">
-              <option value="">All sectors</option>
-              {sectors.map((s) => (
-                <option key={s} value={s}>{s}</option>
-              ))}
-            </select>
-            <ArrowDownWideNarrow className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
-          </div>
-
-          <button
-            onClick={() => setWatchOnly((v) => !v)}
-            className={cn(
-              'inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-sm font-medium ring-1 transition-all whitespace-nowrap',
-              watchOnly ? 'bg-amber-400/15 ring-amber-400/40 text-amber-400' : 'bg-surface ring-white/5 text-muted-foreground hover:text-foreground',
-            )}
-          >
-            <Star className={cn('w-4 h-4', watchOnly && 'fill-current')} />
+        <div className="flex items-center gap-2">
+          <select value={sector} onChange={(e) => setSector(e.target.value)} className="field !w-auto min-w-0 flex-1 sm:flex-none" aria-label="Filter by sector">
+            <option value="">All sectors</option>
+            {sectors.map((s) => <option key={s} value={s}>{s}</option>)}
+          </select>
+          <button onClick={() => setWatchOnly((v) => !v)} aria-pressed={watchOnly} className={cn('btn shrink-0', watchOnly ? 'btn-primary' : 'btn-plain')}>
+            <Star className={cn('h-4 w-4', watchOnly && 'fill-current')} />
             <span className="hidden sm:inline">Watchlist</span>
-            {watchedCount > 0 && (
-              <span className="px-1.5 py-0.5 rounded-full bg-white/10 text-[10px] font-mono-data">{watchedCount}</span>
-            )}
+            {watchedCount > 0 && <span className="tnum text-xs opacity-80">{watchedCount}</span>}
           </button>
         </div>
       </div>
 
-      {/* Table */}
       {isLoading ? (
-        <div className="surface-card p-12 text-center text-muted-foreground animate-pulse">Loading market data…</div>
+        <div className="card space-y-3 p-5">
+          {Array.from({ length: 8 }).map((_, i) => <div key={i} className="skeleton h-10 w-full" />)}
+        </div>
       ) : (
         <StockTable stocks={filtered} showSector={!sector} />
       )}
-    </div>
-  );
-}
-
-function Stat({ label, value, valueClass }: { label: string; value: string; valueClass?: string }) {
-  return (
-    <div className="rounded-xl bg-white/[0.03] ring-1 ring-white/5 px-3 py-2.5">
-      <p className="text-[11px] text-muted-foreground">{label}</p>
-      <p className={cn('font-mono-data font-bold text-lg mt-0.5', valueClass)}>{value}</p>
     </div>
   );
 }

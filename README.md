@@ -4,7 +4,12 @@
 
 By leveraging a custom RSS proxy server, an embedded SQLite database, and advanced keyword heuristics, Newsdesk offers a sophisticated, uninterrupted reading experience engineered for professional financial analysis.
 
-![Newsdesk Terminal Interface](./.github/assets/screenshot.png)
+![Newsdesk — dark](./.github/assets/screenshot.png)
+
+<p>
+  <img src="./.github/assets/screenshot-light.png" alt="Newsdesk — light" width="62%" />
+  <img src="./.github/assets/screenshot-mobile.png" alt="Newsdesk — mobile" width="26%" />
+</p>
 
 ---
 
@@ -29,21 +34,30 @@ Moves beyond temporary in-memory JSON storage by utilizing a robust `better-sqli
 A custom backend proxy serves articles from the app's own origin, dropping restrictive `X-Frame-Options` / CSP headers so full stories render directly inside a beautifully animated reader modal. Opaque Google News redirect links are resolved server-side to the real publisher URL before rendering, and any publisher that still blocks embedding or sits behind a paywall falls back gracefully to a clean "Read on source" card — you never hit a blank page.
 
 ### 4b. 🔎 Search, Filter, Sort & Saved Articles
-A global control bar lets you search every archived headline (press `/` to focus), filter by source, sort by recency or publisher, and bookmark stories. Saved articles persist in `localStorage`, stay in sync across tabs, and survive backend pruning. The feed paginates with infinite scroll for snappy rendering even across thousands of articles.
+A global control bar lets you search every archived headline (press `/` or ⌘K), filter by source, sort by recency or publisher, and bookmark stories. Saved articles persist in `localStorage`, stay in sync across tabs, and survive backend pruning. The feed paginates with infinite scroll for snappy rendering even across thousands of articles.
 
 ### 4c. 📊 Markets, Sectors & Watchlist
 The full ~500-stock NSE universe is now browsable, not just summarised:
-*   **Screener (`/markets`)**: A sortable, filterable table of every tracked stock — sort by price, change, 1-month performance, volume, market cap, RSI, or technical signal; filter by sector or search by name.
+*   **Screener (`/markets`)**: A sortable, filterable table of every tracked stock — sort by price, change, 1-month performance, 52-week range position, volume or market cap; quick filters for gainers, losers and 52-week extremes; filter by sector or search by name.
 *   **Sector Rotation (`/sectors` → `/sector/:name`)**: Every sector is scored for average move, advance/decline breadth, market-cap weight, and bullish-signal share. Drill into a sector to see its leaders & laggards, full constituent table, and — uniquely — **sector-wide news** auto-joined from articles mentioning any company in that sector.
 *   **Watchlist (`/watchlist`)**: Star any stock from the screener, a sector, or a company page. Watched symbols persist in `localStorage`, sync across tabs, and power a dedicated view that pairs live quotes with the latest news mentioning those holdings.
-*   **Richer company pages**: Week/month/quarter performance, RSI & ADX momentum reads, a sector-peer strip, a one-tap watchlist toggle, and a deep link to the interactive TradingView chart.
+*   **Richer company pages**: Week/month/quarter performance, 52-week range position, a sector-peer strip, a one-tap watchlist toggle, and a deep link to the interactive TradingView chart.
 *   **Mobile navigation**: A bottom tab bar brings the dashboard, screener, sectors, watchlist, and topics to small screens.
 
-### 5. 🎨 Institutional Dark-Mode UI
-*   **Topography**: Built on standard CSS grid layouts enforcing chronological (left-to-right, top-to-bottom) reading.
-*   **Glassmorphism**: Sleek floating navbars and blur effects. 
-*   **Micro-interactions**: Framer Motion powers layout shifts and focus indicators.
-*   **Live Status**: A unified header shows database connection health and real-time syncing status.
+### 5. 🎨 Liquid Glass Design (iOS 26 / macOS 26)
+Newsdesk shares its design tokens with [IPO Decode](https://ipodecode.mrchartist.com) so the Mr. Chartist family feels like one product.
+*   **Materials**: translucent Liquid Glass (blur + saturation + specular rim) for the sidebar, toolbar, tab bar and sheets; inset-grouped cards for content.
+*   **macOS layout**: a floating source-list sidebar with iOS-colour squircle icons, a translucent toolbar, and a large-title page header.
+*   **iOS layout**: a floating capsule tab bar, bottom-sheet article reader with grabber, safe-area aware spacing, 44px touch targets.
+*   **Appearance**: Light / Auto / Dark (follows macOS & iOS), warm-black `#0F0E0D` and warm-paper `#F9F7F4` surfaces, applied before first paint (no flash).
+*   **Type**: Plus Jakarta Sans (display), Inter (body & tabular numerals), DM Serif Display italic (brand accent) — self-hosted in `public/fonts`.
+*   **Accessibility**: visible focus rings, reduced-motion, reduced-transparency and high-contrast fallbacks.
+
+### 6. ⌨️ Command Palette & Reading State
+Press **⌘K / Ctrl+K** (or `/`) to jump to any stock, sector, topic or page, switch appearance, or search headlines. Articles you open are dimmed in the feed so you can see what is left to read. The home page leads with a "Top stories" block and greets you with the live NSE session state (standard hours, Mon–Fri 9:15–15:30 IST — exchange holidays not included).
+
+### 7. 📈 Price-Action Only
+Market views avoid indicator readouts. Breadth is advancers/decliners and stocks near 52-week highs/lows; the screener and company pages use 52-week range position, distance from the high, volume and 1W/1M/3M performance.
 
 ---
 

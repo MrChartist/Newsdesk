@@ -1,26 +1,28 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Star, Newspaper, LineChart } from 'lucide-react';
+import { Star, LineChart } from 'lucide-react';
 import { useStocks } from '@/hooks/useStockData';
 import { useWatchlist } from '@/hooks/useWatchlist';
 import { useNewsFeed } from '@/hooks/useNewsFeed';
+import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 import StockTable from '@/components/market/StockTable';
-import NewsFeed from '@/components/news/NewsFeed';
+import NewsFeed, { EmptyState } from '@/components/news/NewsFeed';
 import ArticleModal from '@/components/news/ArticleModal';
+import { PageHeader, SectionHeader } from '@/components/ui/Section';
 import type { NewsItem } from '@/types/news';
 
 export default function WatchlistPage() {
+  useDocumentTitle('Watchlist');
   const { symbols, count } = useWatchlist();
   const { data: stockData, isLoading } = useStocks();
   const { data: newsData } = useNewsFeed();
   const [selectedArticle, setSelectedArticle] = useState<NewsItem | null>(null);
 
-  const watchedStocks = useMemo(() => {
-    if (!stockData) return [];
-    return symbols.map((s) => stockData.stocks[s]).filter(Boolean);
-  }, [stockData, symbols]);
+  const watchedStocks = useMemo(
+    () => (stockData ? symbols.map((s) => stockData.stocks[s]).filter(Boolean) : []),
+    [stockData, symbols],
+  );
 
-  // News that mentions any watched company
   const watchedNews = useMemo(() => {
     if (!newsData?.items || symbols.length === 0) return [];
     const set = new Set(symbols);
@@ -30,54 +32,39 @@ export default function WatchlistPage() {
   }, [newsData, symbols]);
 
   return (
-    <div className="space-y-6 pb-24 max-w-7xl mx-auto">
-      <div className="surface-card p-6 flex items-center gap-3">
-        <div className="p-2 rounded-xl bg-amber-400/15 text-amber-400">
-          <Star className="w-6 h-6 fill-current" />
-        </div>
-        <div>
-          <h1 className="text-2xl font-display font-bold">My Watchlist</h1>
-          <p className="text-sm text-muted-foreground">
-            {count > 0 ? `${count} stock${count === 1 ? '' : 's'} tracked` : 'Star stocks anywhere to track them here.'}
-          </p>
-        </div>
-      </div>
+    <div className="space-y-8">
+      <PageHeader
+        eyebrow="Your stocks"
+        title="Watchlist"
+        subtitle={count > 0 ? `${count} stock${count === 1 ? '' : 's'} tracked on this device.` : 'Star a stock anywhere to track it here.'}
+      />
 
       {count === 0 ? (
-        <div className="surface-card p-16 text-center">
-          <Star className="w-12 h-12 mx-auto text-muted-foreground/40 mb-4" />
-          <h2 className="text-lg font-display font-semibold mb-2">Your watchlist is empty</h2>
-          <p className="text-sm text-muted-foreground mb-6 max-w-sm mx-auto">
-            Tap the ☆ star on any stock in the screener, a sector, or a company page to start tracking it.
-          </p>
-          <Link
-            to="/markets"
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-primary-foreground font-semibold hover:bg-primary-hover transition-colors"
-          >
-            <LineChart className="w-4 h-4" /> Browse the screener
-          </Link>
+        <div className="card">
+          <EmptyState
+            icon={Star}
+            title="Your watchlist is empty"
+            hint="Tap the star on any stock in the screener, a sector or a company page. It stays on this device."
+            action={<Link to="/markets" className="btn btn-primary"><LineChart className="h-4 w-4" /> Browse the screener</Link>}
+          />
         </div>
       ) : (
         <>
           {isLoading ? (
-            <div className="surface-card p-12 text-center text-muted-foreground animate-pulse">Loading quotes…</div>
+            <div className="card space-y-3 p-5">{Array.from({ length: 4 }).map((_, i) => <div key={i} className="skeleton h-10 w-full" />)}</div>
           ) : (
-            <StockTable stocks={watchedStocks} showSector />
+            <StockTable stocks={watchedStocks} showSector initialSort="change" />
           )}
 
-          <div className="pt-2">
-            <h2 className="text-lg font-display font-semibold mb-4 flex items-center gap-2">
-              <Newspaper className="w-5 h-5 text-primary" />
-              Watchlist News
-              <span className="text-sm text-muted-foreground font-normal px-2 py-0.5 rounded-full bg-white/5">{watchedNews.length}</span>
-            </h2>
+          <section>
+            <SectionHeader title="Watchlist news" count={watchedNews.length} />
             <NewsFeed
               items={watchedNews}
               onSelectArticle={setSelectedArticle}
               emptyTitle="No news for your watchlist yet"
               emptyHint="Stories mentioning your tracked stocks will surface here."
             />
-          </div>
+          </section>
         </>
       )}
 

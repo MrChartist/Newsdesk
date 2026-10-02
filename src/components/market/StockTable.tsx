@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowUp, ArrowDown, ChevronsUpDown } from 'lucide-react';
-import { cn, formatPrice, formatChange, formatMarketCap, formatVolume, getRecommendationLabel } from '@/lib/utils';
+import { ArrowUp, ArrowDown } from 'lucide-react';
+import { cn, formatPrice, formatMarketCap, formatVolume, rangePosition } from '@/lib/utils';
 import type { StockData } from '@/types/stock';
 import WatchlistStar from './WatchlistStar';
+import { ChangePill, RangeBar } from '../ui/Section';
 
-type SortKey = 'symbol' | 'price' | 'change' | 'perfMonth' | 'volume' | 'marketCap' | 'rsi' | 'recommendAll';
+type SortKey = 'symbol' | 'price' | 'change' | 'perfMonth' | 'range' | 'volume' | 'marketCap';
 
 interface Column {
   key: SortKey;
@@ -17,12 +18,11 @@ interface Column {
 const COLUMNS: Column[] = [
   { key: 'symbol', label: 'Symbol', align: 'left' },
   { key: 'price', label: 'Price', align: 'right' },
-  { key: 'change', label: 'Chg %', align: 'right' },
+  { key: 'change', label: 'Today', align: 'right' },
   { key: 'perfMonth', label: '1M', align: 'right', className: 'hidden md:table-cell' },
-  { key: 'volume', label: 'Volume', align: 'right', className: 'hidden lg:table-cell' },
-  { key: 'marketCap', label: 'Mkt Cap', align: 'right', className: 'hidden sm:table-cell' },
-  { key: 'rsi', label: 'RSI', align: 'right', className: 'hidden xl:table-cell' },
-  { key: 'recommendAll', label: 'Signal', align: 'right' },
+  { key: 'range', label: '52W range', align: 'right', className: 'hidden lg:table-cell' },
+  { key: 'volume', label: 'Volume', align: 'right', className: 'hidden xl:table-cell' },
+  { key: 'marketCap', label: 'Mkt cap', align: 'right', className: 'hidden sm:table-cell' },
 ];
 
 interface Props {
@@ -31,6 +31,11 @@ interface Props {
   initialSort?: SortKey;
   initialDir?: 'asc' | 'desc';
 }
+
+const sortValue = (s: StockData, key: SortKey): number =>
+  key === 'range'
+    ? rangePosition(s.price, s.low52W, s.high52W) ?? -Infinity
+    : ((s[key as keyof StockData] as number | null) ?? -Infinity);
 
 export default function StockTable({ stocks, showSector = false, initialSort = 'marketCap', initialDir = 'desc' }: Props) {
   const navigate = useNavigate();
@@ -44,99 +49,79 @@ export default function StockTable({ stocks, showSector = false, initialSort = '
         const cmp = a.symbol.localeCompare(b.symbol);
         return dir === 'asc' ? cmp : -cmp;
       }
-      const av = (a[sortKey] as number | null) ?? -Infinity;
-      const bv = (b[sortKey] as number | null) ?? -Infinity;
+      const av = sortValue(a, sortKey), bv = sortValue(b, sortKey);
       return dir === 'asc' ? av - bv : bv - av;
     });
     return arr;
   }, [stocks, sortKey, dir]);
 
   const onSort = (key: SortKey) => {
-    if (key === sortKey) {
-      setDir((d) => (d === 'asc' ? 'desc' : 'asc'));
-    } else {
-      setSortKey(key);
-      setDir(key === 'symbol' ? 'asc' : 'desc');
-    }
+    if (key === sortKey) setDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    else { setSortKey(key); setDir(key === 'symbol' ? 'asc' : 'desc'); }
   };
 
   if (stocks.length === 0) {
-    return (
-      <div className="surface-card p-12 text-center text-muted-foreground text-sm">
-        No stocks match the current filters.
-      </div>
-    );
+    return <div className="card p-12 text-center text-sm text-muted-foreground">No stocks match the current filters.</div>;
   }
 
   return (
-    <div className="surface-card overflow-hidden">
+    <div className="card overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-white/5 text-muted-foreground">
-              <th className="w-9 px-2 py-3" />
+            <tr className="border-b border-[var(--mat-separator)]">
+              <th className="w-11 px-2 py-3" />
               {COLUMNS.map((col) => {
                 const active = col.key === sortKey;
-                const Arrow = !active ? ChevronsUpDown : dir === 'asc' ? ArrowUp : ArrowDown;
+                const Arrow = dir === 'asc' ? ArrowUp : ArrowDown;
                 return (
                   <th
                     key={col.key}
-                    onClick={() => onSort(col.key)}
-                    className={cn(
-                      'px-3 py-3 font-medium cursor-pointer select-none whitespace-nowrap hover:text-foreground transition-colors',
-                      col.align === 'right' ? 'text-right' : 'text-left',
-                      active && 'text-foreground',
-                      col.className,
-                    )}
+                    aria-sort={active ? (dir === 'asc' ? 'ascending' : 'descending') : 'none'}
+                    className={cn('whitespace-nowrap px-3 py-3 text-[0.8125rem] font-semibold', col.align === 'right' ? 'text-right' : 'text-left', col.className)}
                   >
-                    <span className={cn('inline-flex items-center gap-1', col.align === 'right' && 'flex-row-reverse')}>
+                    <button
+                      onClick={() => onSort(col.key)}
+                      className={cn(
+                        'inline-flex items-center gap-1 transition-colors',
+                        col.align === 'right' && 'flex-row-reverse',
+                        active ? 'text-foreground' : 'text-muted-foreground hover:text-foreground',
+                      )}
+                    >
                       {col.label}
-                      <Arrow className="w-3 h-3 opacity-60" />
-                    </span>
+                      <Arrow className={cn('h-3 w-3 text-primary', !active && 'invisible')} strokeWidth={3} />
+                    </button>
                   </th>
                 );
               })}
             </tr>
           </thead>
           <tbody>
-            {sorted.map((stock) => {
-              const rec = getRecommendationLabel(stock.recommendAll);
-              const up = (stock.change ?? 0) >= 0;
-              return (
-                <tr
-                  key={stock.symbol}
-                  onClick={() => navigate(`/company/${stock.symbol}`)}
-                  className="border-b border-white/[0.03] last:border-0 hover:bg-white/5 cursor-pointer transition-colors"
-                >
-                  <td className="px-2 py-2.5 text-center">
-                    <WatchlistStar symbol={stock.symbol} size={15} />
-                  </td>
-                  <td className="px-3 py-2.5">
-                    <div className="font-mono-data font-semibold">{stock.symbol}</div>
-                    <div className="text-[11px] text-muted-foreground truncate max-w-[160px] md:max-w-[220px]">
-                      {showSector && stock.sector ? stock.sector : stock.name}
-                    </div>
-                  </td>
-                  <td className="px-3 py-2.5 text-right font-mono-data">{formatPrice(stock.price)}</td>
-                  <td className={cn('px-3 py-2.5 text-right font-mono-data font-semibold', up ? 'text-profit' : 'text-loss')}>
-                    {formatChange(stock.change)}
-                  </td>
-                  <td className={cn('px-3 py-2.5 text-right font-mono-data hidden md:table-cell', (stock.perfMonth ?? 0) >= 0 ? 'text-profit' : 'text-loss')}>
-                    {formatChange(stock.perfMonth)}
-                  </td>
-                  <td className="px-3 py-2.5 text-right font-mono-data text-muted-foreground hidden lg:table-cell">
-                    {formatVolume(stock.volume)}
-                  </td>
-                  <td className="px-3 py-2.5 text-right font-mono-data hidden sm:table-cell">{formatMarketCap(stock.marketCap)}</td>
-                  <td className={cn('px-3 py-2.5 text-right font-mono-data hidden xl:table-cell', stock.rsi == null ? 'text-muted-foreground' : stock.rsi > 70 ? 'text-loss' : stock.rsi < 30 ? 'text-profit' : 'text-muted-foreground')}>
-                    {stock.rsi != null ? stock.rsi.toFixed(0) : '—'}
-                  </td>
-                  <td className="px-3 py-2.5 text-right">
-                    <span className={cn('text-xs font-semibold whitespace-nowrap', rec.color)}>{rec.label}</span>
-                  </td>
-                </tr>
-              );
-            })}
+            {sorted.map((stock) => (
+              <tr
+                key={stock.symbol}
+                onClick={() => navigate(`/company/${stock.symbol}`)}
+                className="cursor-pointer border-b border-[var(--mat-separator)] last:border-0 transition-colors hover:bg-[var(--mat-fill-1)]"
+              >
+                <td className="px-2 py-2 text-center"><WatchlistStar symbol={stock.symbol} size={16} /></td>
+                <td className="px-3 py-2.5">
+                  <div className="font-bold">{stock.symbol}</div>
+                  <div className="max-w-[150px] truncate text-xs text-muted-foreground md:max-w-[240px]">
+                    {showSector && stock.sector ? stock.sector : stock.name}
+                  </div>
+                </td>
+                <td className="px-3 py-2.5 text-right tnum">{formatPrice(stock.price)}</td>
+                <td className="px-3 py-2.5 text-right"><ChangePill value={stock.change} /></td>
+                <td className={cn('hidden px-3 py-2.5 text-right font-semibold tnum md:table-cell', (stock.perfMonth ?? 0) >= 0 ? 'text-profit' : 'text-loss')}>
+                  {stock.perfMonth != null ? `${stock.perfMonth >= 0 ? '+' : ''}${stock.perfMonth.toFixed(2)}%` : '—'}
+                </td>
+                <td className="hidden w-40 px-3 py-2.5 lg:table-cell">
+                  <RangeBar position={rangePosition(stock.price, stock.low52W, stock.high52W)} />
+                </td>
+                <td className="hidden px-3 py-2.5 text-right text-muted-foreground tnum xl:table-cell">{formatVolume(stock.volume)}</td>
+                <td className="hidden px-3 py-2.5 text-right tnum sm:table-cell">{formatMarketCap(stock.marketCap)}</td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>

@@ -1,71 +1,71 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useNewsFeed, useFeedSources } from '@/hooks/useNewsFeed';
 import { useDebounce } from '@/hooks/useDebounce';
 import { useBookmarks } from '@/hooks/useBookmarks';
-import HeroStats from '@/components/stats/HeroStats';
+import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 import MarketTicker from '@/components/market/MarketTicker';
 import MarketPulse from '@/components/market/MarketPulse';
 import TopMovers from '@/components/market/TopMovers';
 import SectorHeatmap from '@/components/market/SectorHeatmap';
 import NewsFeed from '@/components/news/NewsFeed';
+import LeadStory from '@/components/news/LeadStory';
 import FeedControls, { type SortMode } from '@/components/news/FeedControls';
 import ArticleModal from '@/components/news/ArticleModal';
+import MarketStatus from '@/components/layout/MarketStatus';
+import { PageHeader, SectionHeader } from '@/components/ui/Section';
 import { CATEGORIES } from '@/data/categories';
-import { cn } from '@/lib/utils';
+import { cn, formatDateIN, greeting } from '@/lib/utils';
 import type { NewsItem } from '@/types/news';
 
-// Default categories to show in the curated "All Intelligence" view
+// Categories shown in the curated default view
 const DEFAULT_CATEGORIES = [
   'Markets', 'Stocks', 'Corporate', 'Business', 'Economy', 'Money', 'IPO', 'Tech', 'AI',
-  'Geopolitics', 'MiddleEast', 'Defense', 'World'
+  'Geopolitics', 'MiddleEast', 'Defense', 'World',
 ];
 
 const PAGE_SIZE = 24;
+const DAY = 24 * 3600 * 1000;
 
 export default function Home() {
   const { data: newsData, isLoading, isError, refetch } = useNewsFeed();
   const { data: feedSources } = useFeedSources();
   const { items: savedItems, count: savedCount } = useBookmarks();
+  const [params, setParams] = useSearchParams();
 
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(params.get('q') ?? '');
   const [source, setSource] = useState('');
   const [sort, setSort] = useState<SortMode>('newest');
-  const [savedOnly, setSavedOnly] = useState(false);
+  const [savedOnly, setSavedOnly] = useState(params.get('saved') === '1');
   const [page, setPage] = useState(1);
   const [selectedArticle, setSelectedArticle] = useState<NewsItem | null>(null);
 
   const debouncedSearch = useDebounce(search, 200);
-  const searchRef = useRef<HTMLInputElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
 
-  // "/" focuses the search box (unless already typing in a field)
+  useDocumentTitle(savedOnly ? 'Saved' : undefined);
+
+  // Deep links from the sidebar ("Saved") and command palette (headline search)
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      const tag = (e.target as HTMLElement)?.tagName;
-      if (e.key === '/' && tag !== 'INPUT' && tag !== 'TEXTAREA' && tag !== 'SELECT') {
-        e.preventDefault();
-        searchRef.current?.focus();
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, []);
+    setSavedOnly(params.get('saved') === '1');
+    const q = params.get('q');
+    if (q !== null) setSearch(q);
+  }, [params]);
 
   const isFiltering = Boolean(debouncedSearch.trim() || source || savedOnly);
+  const showHero = !isFiltering && !activeCategory && sort === 'newest';
 
   const filteredItems = useMemo(() => {
     const base = savedOnly ? savedItems : (newsData?.items ?? []);
     const q = debouncedSearch.trim().toLowerCase();
 
     const result = base.filter((item) => {
-      // Category: explicit pick wins; otherwise curate the home view only when
-      // the user isn't actively searching/filtering.
       if (activeCategory) {
         if (item.category !== activeCategory) return false;
-      } else if (!isFiltering) {
-        if (!DEFAULT_CATEGORIES.includes(item.category)) return false;
+      } else if (!isFiltering && !DEFAULT_CATEGORIES.includes(item.category)) {
+        return false;
       }
       if (source && item.source.id !== source) return false;
       if (q) {
@@ -84,129 +84,152 @@ export default function Home() {
       const diff = new Date(a.pubDate).getTime() - new Date(b.pubDate).getTime();
       return sort === 'oldest' ? diff : -diff;
     });
-
     return result;
   }, [newsData?.items, savedItems, savedOnly, activeCategory, isFiltering, source, debouncedSearch, sort]);
 
-  // Reset pagination whenever the result set changes
-  useEffect(() => {
-    setPage(1);
-  }, [activeCategory, source, sort, savedOnly, debouncedSearch]);
+  // Lead + runner-ups come off the top of the curated, newest-first list
+  const { lead, runnerUps, feedItems } = useMemo(() => {
+    if (!showHero) return { lead: null, runnerUps: [] as NewsItem[], feedItems: filteredItems };
+    const lead = filteredItems.find((i) => i.image) ?? filteredItems[0] ?? null;
+    if (!lead) return { lead: null, runnerUps: [] as NewsItem[], feedItems: filteredItems };
+    const runnerUps = filteredItems.filter((i) => i.id !== lead.id).slice(0, 4);
+    const taken = new Set([lead.id, ...runnerUps.map((i) => i.id)]);
+    return { lead, runnerUps, feedItems: filteredItems.filter((i) => !taken.has(i.id)) };
+  }, [filteredItems, showHero]);
 
-  const visibleItems = useMemo(
-    () => filteredItems.slice(0, page * PAGE_SIZE),
-    [filteredItems, page],
-  );
-  const hasMore = visibleItems.length < filteredItems.length;
+  useEffect(() => { setPage(1); }, [activeCategory, source, sort, savedOnly, debouncedSearch]);
 
-  // Infinite scroll
+  const visibleItems = useMemo(() => feedItems.slice(0, page * PAGE_SIZE), [feedItems, page]);
+  const hasMore = visibleItems.length < feedItems.length;
+
   const loadMore = useCallback(() => setPage((p) => p + 1), []);
   useEffect(() => {
     if (!hasMore) return;
     const el = sentinelRef.current;
     if (!el) return;
-    const obs = new IntersectionObserver(
-      (entries) => entries[0].isIntersecting && loadMore(),
-      { rootMargin: '600px' },
-    );
+    const obs = new IntersectionObserver((entries) => entries[0].isIntersecting && loadMore(), { rootMargin: '600px' });
     obs.observe(el);
     return () => obs.disconnect();
   }, [hasMore, loadMore]);
 
-  const clearCategory = (id: string | null) => {
-    setActiveCategory(id);
-    if (id) setSavedOnly(false);
+  const toggleSaved = () => {
+    const next = new URLSearchParams(params);
+    if (savedOnly) next.delete('saved'); else next.set('saved', '1');
+    setParams(next, { replace: true });
+    setActiveCategory(null);
   };
 
-  // Category tabs — mix of financial and geopolitical
-  const filterTabs = [
-    { id: null, label: 'All Intelligence' },
-    ...CATEGORIES.filter((c) => DEFAULT_CATEGORIES.includes(c.id)),
-  ];
+  const pickCategory = (id: string | null) => {
+    setActiveCategory(id);
+    if (id && savedOnly) {
+      const next = new URLSearchParams(params);
+      next.delete('saved');
+      setParams(next, { replace: true });
+    }
+  };
+
+  const clearSearch = (v: string) => {
+    setSearch(v);
+    if (!v && params.has('q')) {
+      const next = new URLSearchParams(params);
+      next.delete('q');
+      setParams(next, { replace: true });
+    }
+  };
+
+  const tabs = [{ id: null as string | null, label: 'All' }, ...CATEGORIES.filter((c) => DEFAULT_CATEGORIES.includes(c.id))];
+
+  const last24h = useMemo(
+    () => (newsData?.items ?? []).filter((i) => Date.now() - new Date(i.pubDate).getTime() < DAY).length,
+    [newsData?.items],
+  );
 
   const heading = savedOnly
-    ? 'Saved Articles'
+    ? 'Saved articles'
     : activeCategory
-      ? (CATEGORIES.find((c) => c.id === activeCategory)?.label || activeCategory)
+      ? CATEGORIES.find((c) => c.id === activeCategory)?.label ?? activeCategory
       : debouncedSearch.trim()
         ? `Results for “${debouncedSearch.trim()}”`
-        : 'Market Intelligence';
+        : 'Latest';
 
   return (
-    <div className="space-y-5 pb-12">
-      {/* Quick Stats */}
-      <HeroStats />
+    <div className="space-y-8">
+      {!isFiltering && !activeCategory && (
+        <>
+          <PageHeader
+            eyebrow={formatDateIN()}
+            title={greeting()}
+            subtitle={
+              newsData
+                ? <><span className="tnum font-semibold text-foreground">{last24h.toLocaleString('en-IN')}</span> stories in the last 24 hours from {feedSources?.length ?? '30+'} sources.</>
+                : 'Loading the latest from the market desk…'
+            }
+            actions={<MarketStatus className="md:hidden" />}
+          />
 
-      {/* Live Index Strip (NIFTY / BANKNIFTY / SENSEX) */}
-      <MarketTicker />
+          <MarketTicker />
 
-      {/* Market Overview — sentiment, movers, sectors */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-4">
-        <MarketPulse />
-        <SectorHeatmap />
-        <div className="lg:col-span-2">
-          <TopMovers />
+          {lead && (
+            <section aria-label="Top stories">
+              <SectionHeader title="Top stories" />
+              <LeadStory lead={lead} others={runnerUps} onSelect={setSelectedArticle} />
+            </section>
+          )}
+
+          <section aria-label="Market overview" className="space-y-5">
+            <div className="grid gap-4 lg:grid-cols-3">
+              <MarketPulse />
+              <TopMovers className="lg:col-span-2" />
+            </div>
+            <SectorHeatmap />
+          </section>
+        </>
+      )}
+
+      <section aria-label="News feed" className="space-y-4">
+        <SectionHeader title={heading} count={filteredItems.length} />
+
+        <div className="-mx-4 overflow-x-auto px-4 pb-0.5 scrollbar-none sm:mx-0 sm:px-0">
+          <div className="segmented" role="tablist" aria-label="Topics">
+            {tabs.map((tab) => {
+              const active = !savedOnly && activeCategory === tab.id;
+              const meta = tab.id ? CATEGORIES.find((c) => c.id === tab.id) : null;
+              const Icon = meta?.icon;
+              return (
+                <button
+                  key={tab.id ?? 'all'}
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => pickCategory(tab.id)}
+                  className="segmented-item"
+                >
+                  {active && (
+                    <motion.span
+                      layoutId="topic-pill"
+                      className="absolute inset-0 rounded-full bg-card shadow-1"
+                      transition={{ type: 'spring', stiffness: 420, damping: 34 }}
+                    />
+                  )}
+                  {Icon && <Icon className="relative h-3.5 w-3.5" style={active ? { color: meta?.color } : undefined} />}
+                  <span className="relative">{tab.label}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
-      </div>
 
-      {/* Search / filter / sort controls */}
-      <FeedControls
-        ref={searchRef}
-        search={search}
-        onSearchChange={setSearch}
-        sources={feedSources ?? []}
-        source={source}
-        onSourceChange={setSource}
-        sort={sort}
-        onSortChange={setSort}
-        savedOnly={savedOnly}
-        onToggleSaved={() => { setSavedOnly((v) => !v); setActiveCategory(null); }}
-        savedCount={savedCount}
-      />
-
-      {/* Category Filter Bar */}
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none -mx-1 px-1">
-        {filterTabs.map((tab) => {
-          const active = !savedOnly && (tab.id === null ? activeCategory === null : activeCategory === tab.id);
-          const meta = tab.id ? CATEGORIES.find((c) => c.id === tab.id) : null;
-          const Icon = meta?.icon;
-
-          return (
-            <button
-              key={tab.id ?? 'all'}
-              onClick={() => clearCategory(tab.id ?? null)}
-              className={cn(
-                "relative px-3.5 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap flex items-center gap-1.5",
-                active
-                  ? "text-foreground"
-                  : "text-muted-foreground hover:text-foreground hover:bg-white/5"
-              )}
-            >
-              {Icon && <Icon className="w-3.5 h-3.5" style={active ? { color: meta?.color } : {}} />}
-              <span>{tab.label ?? tab.id}</span>
-              {active && (
-                <motion.div
-                  layoutId="category-pill"
-                  className="absolute inset-0 rounded-full bg-white/10 ring-1 ring-white/10 -z-10"
-                  initial={false}
-                  transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                />
-              )}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* News Grid */}
-      <div>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-display font-semibold flex items-center gap-2">
-            {heading}
-            <span className="text-sm text-muted-foreground font-normal px-2 py-0.5 rounded-full bg-white/5">
-              {filteredItems.length}
-            </span>
-          </h2>
-        </div>
+        <FeedControls
+          search={search}
+          onSearchChange={clearSearch}
+          sources={feedSources ?? []}
+          source={source}
+          onSourceChange={setSource}
+          sort={sort}
+          onSortChange={setSort}
+          savedOnly={savedOnly}
+          onToggleSaved={toggleSaved}
+          savedCount={savedCount}
+        />
 
         <NewsFeed
           items={visibleItems}
@@ -215,30 +238,19 @@ export default function Home() {
           onRetry={() => refetch()}
           onSelectArticle={setSelectedArticle}
           emptyTitle={savedOnly ? 'No saved articles yet' : 'No articles found'}
-          emptyHint={
-            savedOnly
-              ? 'Tap the bookmark icon on any article to save it for later.'
-              : 'Try a different category, source, or search term.'
-          }
+          emptyHint={savedOnly ? 'Tap the bookmark on any story to keep it here.' : 'Try a different topic, source or search term.'}
         />
 
-        {/* Infinite-scroll sentinel + manual fallback */}
         {hasMore && (
-          <div ref={sentinelRef} className="flex justify-center pt-8">
-            <button
-              onClick={loadMore}
-              className="px-5 py-2.5 rounded-xl bg-surface ring-1 ring-white/5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Load more ({filteredItems.length - visibleItems.length} remaining)
+          <div ref={sentinelRef} className="flex justify-center pt-6">
+            <button onClick={loadMore} className={cn('btn btn-plain')}>
+              Show more · {feedItems.length - visibleItems.length} remaining
             </button>
           </div>
         )}
-      </div>
+      </section>
 
-      <ArticleModal
-        item={selectedArticle}
-        onClose={() => setSelectedArticle(null)}
-      />
+      <ArticleModal item={selectedArticle} onClose={() => setSelectedArticle(null)} />
     </div>
   );
 }
