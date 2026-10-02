@@ -41,7 +41,7 @@ export default function App() {
           </div>
         )}
         <main id="main" tabIndex={-1} className="mx-auto w-full max-w-[1280px] px-4 pb-[calc(var(--tabbar-h)+var(--safe-b)+2rem)] pt-5 sm:px-6 lg:px-8 lg:pb-12 lg:pt-7 outline-none">
-          <div key={pathname} className="animate-fade-up">
+          <div key={pathname} className="route-in">
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/search" element={<SearchPage />} />

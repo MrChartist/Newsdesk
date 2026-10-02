@@ -8,7 +8,7 @@ export default function Coverage({ story, className, light }: { story: Story; cl
   const names = story.others.map((s) => s.name).join(', ');
   return (
     <span
-      className={cn('inline-flex items-center gap-1.5 text-xs font-semibold', light ? 'text-white/85' : 'text-muted-foreground', className)}
+      className={cn('inline-flex items-center gap-1.5 text-xs font-medium', light ? 'text-white/85' : 'text-muted-foreground', className)}
       title={`Also reported by ${names}`}
     >
       <span className="flex -space-x-1.5">

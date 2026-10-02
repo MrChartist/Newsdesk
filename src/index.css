@@ -400,6 +400,10 @@
 }
 
 /* ── Motion ───────────────────────────────────────────────────────────── */
+/* Route change: fades in, then lets go — a lingering animation/transform would re-stack fixed children */
+.route-in { animation: route-in 0.25s var(--ease-out) backwards; }
+@keyframes route-in { from { opacity: 0; } }
+
 @keyframes row-glow {
   0% { background-color: hsl(var(--primary) / 0.14); }
   100% { background-color: transparent; }

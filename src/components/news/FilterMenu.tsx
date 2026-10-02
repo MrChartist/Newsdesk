@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { SlidersHorizontal, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { FeedSource } from '@/types/news';
 import { useMutedSources } from '@/hooks/useMutedSources';
+import { usePopover } from '@/hooks/usePopover';
 
 export const RANGES = [
   { id: 'any', label: 'Any time', ms: Infinity },
@@ -26,19 +26,9 @@ const label = 'mb-1.5 block text-xs font-semibold text-muted-foreground';
 
 /** One "Filters" button instead of three always-visible dropdowns. */
 export function FilterMenu({ sources, source, onSource, range, onRange, sort, onSort }: Props) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const { open, setOpen, ref } = usePopover();
   const { count: mutedCount } = useMutedSources();
   const active = (source ? 1 : 0) + (range !== 'any' ? 1 : 0) + (sort !== 'newest' ? 1 : 0);
-
-  useEffect(() => {
-    if (!open) return;
-    const onDown = (e: MouseEvent) => { if (!ref.current?.contains(e.target as Node)) setOpen(false); };
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.stopPropagation(); setOpen(false); } };
-    document.addEventListener('mousedown', onDown);
-    window.addEventListener('keydown', onKey, true);
-    return () => { document.removeEventListener('mousedown', onDown); window.removeEventListener('keydown', onKey, true); };
-  }, [open]);
 
   return (
     <div ref={ref} className="relative">

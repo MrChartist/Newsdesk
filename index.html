@@ -31,6 +31,10 @@
         r.classList.add(eff);
         var m = document.querySelector('meta[name="theme-color"]');
         if (m) m.setAttribute('content', eff === 'light' ? '#F9F7F4' : '#0F0E0D');
+        try {
+          var ts = localStorage.getItem('newsdesk-text-size');
+          if (ts === 'large') r.style.fontSize = '112.5%'; else if (ts === 'xl') r.style.fontSize = '125%';
+        } catch (e) {}
       })();
     </script>
     <div id="root"></div>

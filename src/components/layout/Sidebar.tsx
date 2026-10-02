@@ -8,12 +8,13 @@ import { getCategoryMeta } from '@/data/categories';
 import { NAV_ITEMS, isActive } from './nav';
 import BrandMark from './BrandMark';
 import ThemeToggle from './ThemeToggle';
+import TextSizeToggle from './TextSizeToggle';
 
 /** macOS 26 floating source-list sidebar — Liquid Glass, inset from the window edge. */
 export default function Sidebar() {
   const { pathname } = useLocation();
   const { count: savedCount } = useBookmarks();
-  const { stories, isFetching, isError, data } = useStories();
+  const { stories, isFetching, isError } = useStories();
   const { isRead } = useReadArticles();
 
   // Topics ranked by 24h volume, with unread counts
@@ -83,9 +84,9 @@ export default function Sidebar() {
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <span className={cn('h-2 w-2 rounded-full', isError ? 'bg-ios-red' : isFetching ? 'bg-ios-orange live-dot' : 'bg-ios-green')} />
           <span className="font-medium">{isError ? 'Backend offline' : isFetching ? 'Syncing…' : 'Live'}</span>
-          {data && <span className="ml-auto tnum">{data.count.toLocaleString('en-IN')} stories</span>}
         </div>
         <ThemeToggle />
+        <TextSizeToggle />
       </div>
     </aside>
   );

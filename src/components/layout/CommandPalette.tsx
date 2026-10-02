@@ -5,6 +5,7 @@ import { Search, CornerDownLeft, Newspaper, Sun, Hash, Building2, Radio, Keyboar
 import { useStories } from '@/hooks/useStories';
 import { useCompanies, useFeedSources } from '@/hooks/useNewsFeed';
 import { setTheme } from '@/hooks/useTheme';
+import { setTextSize, TEXT_SIZES } from '@/hooks/useTextSize';
 import { markManyReadWithUndo } from '@/hooks/useReadArticles';
 import { CATEGORIES } from '@/data/categories';
 import { NAV_ITEMS } from './nav';
@@ -152,6 +153,14 @@ export default function CommandPalette() {
               <Command.Item value="shortcuts" onSelect={() => { setOpen(false); setTimeout(openShortcuts, 80); }} className={itemClass}>
                 <Icon bg="#8E8E93"><Keyboard className="h-[15px] w-[15px]" /></Icon><span className="flex-1">Keyboard shortcuts</span><kbd className="kbd">?</kbd>
               </Command.Item>
+            </Group>
+            <Group heading="Text size">
+              {TEXT_SIZES.map((t) => (
+                <Command.Item key={t.id} value={`size-${t.id}`} onSelect={() => { setTextSize(t.id); setOpen(false); }} className={itemClass}>
+                  <Icon bg="#8E8E93"><span className="text-[11px] font-extrabold">Aa</span></Icon>
+                  <span className="flex-1">{t.label}</span>
+                </Command.Item>
+              ))}
             </Group>
             <Group heading="Appearance">
               {(['light', 'dark', 'system'] as const).map((t) => (

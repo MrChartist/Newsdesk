@@ -21,7 +21,8 @@ When Reuters, CNBC and BizToc all cover the same headline, Newsdesk shows **one 
 ### A proper briefing
 *   **Today**: greeting, stories in the last 24 hours, **Top stories** (ranked by how many sources cover it, whether it has an image, and freshness), and **In the news**: the companies mentioned most today.
 *   **Latest**: grouped by *Last hour / Earlier today / Yesterday / This week*, with topic tabs, source and time-range filters, **Newest** or **Most covered** sort, and **Unread only**.
-*   **Cards or List**: switch layout; your choice is remembered.
+*   **List or Cards**: List is the calm default for scanning headlines; Cards add images and descriptions. Your choice is remembered.
+*   **Easy to read**: metadata is plain muted text instead of coloured badges, rare actions live in a "⋯" menu, and **Text size** (Default / Large / Largest) scales the whole interface. Change it from the sidebar, the reader's **AA** button, or ⌘K; it applies before first paint.
 *   **"N new stories"** pill: new arrivals wait behind a pill, so the list never jumps while you read.
 *   **One Filters menu** (source, time, order) with removable chips for whatever is on, instead of always-visible dropdowns.
 *   **Clean cards**: a card never repeats the headline as its description.

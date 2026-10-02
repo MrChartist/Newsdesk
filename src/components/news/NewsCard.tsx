@@ -1,13 +1,13 @@
 import { Bookmark } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { blurbOf } from '@/lib/blurb';
+import { getCategoryMeta } from '@/data/categories';
 import type { NewsItem } from '@/types/news';
 import type { Story } from '@/lib/stories';
 import { useBookmarks } from '@/hooks/useBookmarks';
 import { useReadArticles } from '@/hooks/useReadArticles';
 import { useHoverPrefetch } from '@/hooks/useArticleSummary';
 import FeedSourceBadge from './FeedSourceBadge';
-import CategoryBadge from './CategoryBadge';
 import TimeAgo from './TimeAgo';
 import Highlight from './Highlight';
 import Coverage from './Coverage';
@@ -32,7 +32,7 @@ export function BookmarkButton({ item, className }: { item: NewsItem; className?
       aria-pressed={saved}
       className={cn(
         'glass flex h-9 w-9 items-center justify-center rounded-full transition-all',
-        saved ? 'text-ios-orange opacity-100' : 'text-foreground/80 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 max-lg:opacity-100',
+        saved ? 'text-ios-orange opacity-100' : 'text-foreground/80 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 max-lg:hidden',
         className,
       )}
     >
@@ -81,27 +81,27 @@ export default function NewsCard({ story, query, selected, domId, onOpen }: Stor
         </div>
       )}
 
-      <div className="flex flex-1 flex-col gap-2.5 p-5">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-1 flex-col gap-2 p-5">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <FeedSourceBadge source={item.source} />
-          <span className="text-muted-foreground/50">·</span>
+          <span aria-hidden>·</span>
           <TimeAgo date={new Date(story.time).toISOString()} />
           {!item.image && <BookmarkButton item={item} className="ml-auto !h-8 !w-8 !shadow-none" />}
         </div>
 
-        <h3 className={cn('line-clamp-3 font-display text-[1.0625rem] font-bold leading-snug tracking-tight', read ? 'text-foreground/55' : 'text-foreground')}>
+        <h3 className={cn('line-clamp-3 font-display text-[1.125rem] font-bold leading-snug tracking-tight', read ? 'text-foreground/55' : 'text-foreground')}>
           <Highlight text={item.title} query={query} />
         </h3>
 
         {blurb && (
-          <p className="line-clamp-2 text-sm leading-relaxed text-muted-foreground">
+          <p className="line-clamp-2 text-[0.9375rem] leading-relaxed text-muted-foreground">
             <Highlight text={blurb} query={query} />
           </p>
         )}
 
-        <div className="mt-auto flex flex-wrap items-center gap-1.5 pt-3">
-          <CategoryBadge category={item.category} />
-          {story.companies.slice(0, 3).map((symbol) => <CompanyMentionTag key={symbol} symbol={symbol} />)}
+        <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-1 pt-3 text-xs text-muted-foreground">
+          <span>{getCategoryMeta(item.category).label}</span>
+          {story.companies.slice(0, 2).map((symbol) => <CompanyMentionTag key={symbol} symbol={symbol} quiet />)}
           <Coverage story={story} className="ml-auto" />
         </div>
       </div>

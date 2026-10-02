@@ -48,8 +48,7 @@ export default function Toolbar() {
         </button>
 
         <div className="flex items-center gap-1 lg:ml-auto">
-          <span className="hidden text-xs tnum text-muted-foreground md:inline">{dataUpdatedAt ? `Updated ${ago(dataUpdatedAt)}` : ''}</span>
-          <button onClick={() => refetch()} className="icon-btn" aria-label="Refresh news" title="Refresh">
+          <button onClick={() => refetch()} className="icon-btn" aria-label="Refresh news" title={dataUpdatedAt ? `Refresh · updated ${ago(dataUpdatedAt)}` : 'Refresh'}>
             <RefreshCw className={cn('h-[18px] w-[18px]', isFetching && 'animate-spin')} />
           </button>
           <button onClick={cycle} className="icon-btn lg:hidden" aria-label={`Appearance: ${theme}`}><ThemeIcon className="h-[18px] w-[18px]" /></button>

@@ -3,7 +3,7 @@ import { useCompanies } from '@/hooks/useNewsFeed';
 import { cn } from '@/lib/utils';
 
 /** $SYMBOL chip → that company's news. */
-export default function CompanyMentionTag({ symbol, className, count }: { symbol: string; className?: string; count?: number }) {
+export default function CompanyMentionTag({ symbol, className, count, quiet }: { symbol: string; className?: string; count?: number; quiet?: boolean }) {
   const { nameOf } = useCompanies();
   return (
     <Link
@@ -11,7 +11,10 @@ export default function CompanyMentionTag({ symbol, className, count }: { symbol
       onClick={(e) => e.stopPropagation()}
       title={`News about ${nameOf(symbol)}`}
       className={cn(
-        'inline-flex items-center gap-1 rounded-full bg-[var(--mat-fill-2)] px-2.5 py-1 text-[11px] font-bold leading-none transition-colors hover:bg-primary/15 hover:text-primary',
+        quiet
+          // plain text until hovered — keeps cards calm
+          ? 'inline-flex items-center gap-1 text-xs font-semibold text-muted-foreground transition-colors hover:text-primary hover:underline underline-offset-2'
+          : 'inline-flex items-center gap-1 rounded-full bg-[var(--mat-fill-2)] px-2.5 py-1 text-[11px] font-bold leading-none transition-colors hover:bg-primary/15 hover:text-primary',
         className,
       )}
     >

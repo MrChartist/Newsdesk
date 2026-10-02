@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, ExternalLink, Copy, Check, Loader2, Bookmark, Share2, ChevronUp, ChevronDown, Send } from 'lucide-react';
 import { cn, timeAgo } from '@/lib/utils';
@@ -7,6 +8,7 @@ import type { Story } from '@/lib/stories';
 import { formatPost, copyText } from '@/lib/share';
 import { useBookmarks } from '@/hooks/useBookmarks';
 import { useArticleSummary } from '@/hooks/useArticleSummary';
+import { useTextSize, TEXT_SIZES } from '@/hooks/useTextSize';
 import ReaderSummary from './ReaderSummary';
 import { markRead } from '@/hooks/useReadArticles';
 import { toast } from '@/lib/toast';
@@ -34,6 +36,7 @@ export default function ArticleModal({ story, onClose, onPrev, onNext }: Props) 
   const [srcDoc, setSrcDoc] = useState('');
   const { isBookmarked, toggle } = useBookmarks();
   const dialogRef = useRef<HTMLDivElement>(null);
+  const { size: textSize, cycle: cycleTextSize } = useTextSize();
   // Keep keyboard focus on the sheet (not the publisher's iframe) so Esc / ← / → keep working
   const holdFocus = useCallback(() => dialogRef.current?.focus({ preventScroll: true }), []);
 
@@ -97,7 +100,8 @@ export default function ArticleModal({ story, onClose, onPrev, onNext }: Props) 
     else copyLink();
   };
 
-  return (
+  // Rendered into <body> so no page ancestor (transforms, animations, overflow) can clip or re-stack it
+  return createPortal(
     <AnimatePresence>
       {story && item && (
         <>
@@ -118,47 +122,54 @@ export default function ArticleModal({ story, onClose, onPrev, onNext }: Props) 
               <span className="h-1 w-9 rounded-full bg-[var(--mat-fill-3)]" />
             </div>
 
-            <div className="glass-thick flex shrink-0 flex-wrap items-center gap-2 border-b border-[var(--mat-separator)] px-4 py-2.5">
-              <div className="flex min-w-0 flex-1 items-center gap-2">
-                <FeedSourceBadge source={item.source} />
-                <span className="text-muted-foreground/50">·</span>
-                <span className="whitespace-nowrap text-xs tnum text-muted-foreground">{timeAgo(item.pubDate)}</span>
-                <CategoryBadge category={item.category} className="hidden sm:inline-flex" />
-                <div className="ml-1 hidden items-center gap-1 lg:flex">
-                  {story.companies.slice(0, 3).map((symbol) => <CompanyMentionTag key={symbol} symbol={symbol} />)}
+            <div className="glass-thick shrink-0 border-b border-[var(--mat-separator)]">
+              {/* Row 1 — what this is, where to go next, close */}
+              <div className="flex items-center gap-2 px-4 pt-2.5">
+                <div className="flex min-w-0 flex-1 items-center gap-2">
+                  <FeedSourceBadge source={item.source} />
+                  <span aria-hidden className="text-muted-foreground/50">·</span>
+                  <span className="whitespace-nowrap text-xs tnum text-muted-foreground">{timeAgo(item.pubDate)}</span>
+                  <CategoryBadge category={item.category} className="hidden sm:inline-flex" />
                 </div>
+                {(onPrev || onNext) && (
+                  <div className="flex items-center">
+                    <button onClick={onPrev} disabled={!onPrev} className="icon-btn disabled:opacity-30" aria-label="Previous story" title="Previous (←)"><ChevronUp className="h-[18px] w-[18px]" /></button>
+                    <button onClick={onNext} disabled={!onNext} className="icon-btn disabled:opacity-30" aria-label="Next story" title="Next (→)"><ChevronDown className="h-[18px] w-[18px]" /></button>
+                  </div>
+                )}
+                <button onClick={onClose} className="icon-btn bg-[var(--mat-fill-2)]" aria-label="Close" title="Close (Esc)"><X className="h-[18px] w-[18px]" /></button>
               </div>
 
-              {(onPrev || onNext) && (
-                <div className="flex items-center">
-                  <button onClick={onPrev} disabled={!onPrev} className="icon-btn disabled:opacity-30" aria-label="Previous story" title="Previous (←)"><ChevronUp className="h-[18px] w-[18px]" /></button>
-                  <button onClick={onNext} disabled={!onNext} className="icon-btn disabled:opacity-30" aria-label="Next story" title="Next (→)"><ChevronDown className="h-[18px] w-[18px]" /></button>
+              {/* Row 2 — how to view it, and what to do with it */}
+              <div className="flex flex-wrap items-center gap-2 px-4 py-2">
+                <div className="segmented" role="tablist" aria-label="View">
+                  {(['summary', 'original'] as const).map((t) => (
+                    <button key={t} role="tab" aria-selected={tab === t} onClick={() => setTab(t)}
+                      className={cn('segmented-item', tab === t && 'bg-card shadow-1')}>
+                      {t === 'summary' ? 'Summary' : 'Original'}
+                    </button>
+                  ))}
                 </div>
-              )}
-              <button onClick={() => toggle(item)} className={cn('icon-btn', saved && '!text-ios-orange')} aria-label={saved ? 'Remove from saved' : 'Save for later'} aria-pressed={saved} title="Save (s)">
-                <Bookmark className={cn('h-[18px] w-[18px]', saved && 'fill-current')} />
-              </button>
-              <button onClick={copyPost} className="icon-btn" aria-label="Copy as Telegram post" title="Copy as Telegram post">
-                {copied === 'post' ? <Check className="h-[18px] w-[18px] text-profit" /> : <Send className="h-[18px] w-[18px]" />}
-              </button>
-              <button onClick={share} className="icon-btn sm:hidden" aria-label="Share"><Share2 className="h-[18px] w-[18px]" /></button>
-              <button onClick={copyLink} className="icon-btn hidden sm:inline-flex" aria-label="Copy link" title="Copy link">
-                {copied === 'link' ? <Check className="h-[18px] w-[18px] text-profit" /> : <Copy className="h-[18px] w-[18px]" />}
-              </button>
-              <a href={item.link} target="_blank" rel="noopener noreferrer" className="icon-btn max-sm:hidden" aria-label="Open on publisher site" title="Open on publisher site"><ExternalLink className="h-[18px] w-[18px]" /></a>
-              <button onClick={onClose} className="icon-btn bg-[var(--mat-fill-2)]" aria-label="Close" title="Close (Esc)"><X className="h-[18px] w-[18px]" /></button>
-
-              <div className="segmented w-full sm:w-auto" role="tablist" aria-label="View">
-                {(['summary', 'original'] as const).map((t) => (
-                  <button key={t} role="tab" aria-selected={tab === t} onClick={() => setTab(t)}
-                    className={cn('segmented-item flex-1 justify-center sm:flex-none', tab === t && 'bg-card shadow-1')}>
-                    {t === 'summary' ? 'Summary' : 'Original'}
+                <div className="ml-auto flex items-center">
+                  <button onClick={() => toggle(item)} className={cn('icon-btn', saved && '!text-ios-orange')} aria-label={saved ? 'Remove from saved' : 'Save for later'} aria-pressed={saved} title="Save (s)">
+                    <Bookmark className={cn('h-[18px] w-[18px]', saved && 'fill-current')} />
                   </button>
-                ))}
+                  <button onClick={cycleTextSize} className="icon-btn" aria-label={`Text size: ${TEXT_SIZES.find((t) => t.id === textSize)!.label}. Tap to change`} title="Text size">
+                    <span className="flex items-baseline font-extrabold leading-none"><span className="text-[0.75rem]">A</span><span className="text-[1.05rem]">A</span></span>
+                  </button>
+                  <button onClick={copyPost} className="icon-btn" aria-label="Copy as Telegram post" title="Copy as Telegram post">
+                    {copied === 'post' ? <Check className="h-[18px] w-[18px] text-profit" /> : <Send className="h-[18px] w-[18px]" />}
+                  </button>
+                  <button onClick={share} className="icon-btn sm:hidden" aria-label="Share"><Share2 className="h-[18px] w-[18px]" /></button>
+                  <button onClick={copyLink} className="icon-btn hidden sm:inline-flex" aria-label="Copy link" title="Copy link">
+                    {copied === 'link' ? <Check className="h-[18px] w-[18px] text-profit" /> : <Copy className="h-[18px] w-[18px]" />}
+                  </button>
+                  <a href={item.link} target="_blank" rel="noopener noreferrer" className="icon-btn max-sm:hidden" aria-label="Open on publisher site" title="Open on publisher site"><ExternalLink className="h-[18px] w-[18px]" /></a>
+                </div>
               </div>
 
               {story.items.length > 1 && (
-                <div className="flex w-full items-center gap-1.5 overflow-x-auto pt-1 scrollbar-none" role="group" aria-label="Coverage">
+                <div className="flex items-center gap-1.5 overflow-x-auto px-4 pb-2.5 scrollbar-none" role="group" aria-label="Coverage">
                   <span className="eyebrow shrink-0 pr-1">Also from</span>
                   {story.items.map((i) => {
                     const active = i.link === item.link;
@@ -211,6 +222,7 @@ export default function ArticleModal({ story, onClose, onPrev, onNext }: Props) 
           </motion.div>
         </>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body,
   );
 }

@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { AlertTriangle, RefreshCw, Inbox, Search, X, LayoutGrid, Rows3, ArrowUp, CheckCheck, Copy, Circle, PartyPopper } from 'lucide-react';
+import { AlertTriangle, RefreshCw, Inbox, Search, X, LayoutGrid, Rows3, ArrowUp, CheckCheck, Copy, MoreHorizontal, PartyPopper } from 'lucide-react';
+import { usePopover } from '@/hooks/usePopover';
 import { cn } from '@/lib/utils';
 import { type Story, BUCKET_ORDER, timeBucket, coverage } from '@/lib/stories';
 import { formatDigest, copyText } from '@/lib/share';
@@ -60,7 +61,7 @@ export default function NewsStream({
   const [topic, setTopic] = useState<string | null>(null);
   const [unreadOnly, setUnreadOnly] = useState(false);
   const [sort, setSort] = useState<SortId>('newest');
-  const [view, setView] = usePersistentState<'cards' | 'list'>('newsdesk:view', 'cards');
+  const [view, setView] = usePersistentState<'cards' | 'list'>('newsdesk:view', 'list');
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState(-1);
   const [openId, setOpenId] = useState<string | null>(null);
@@ -245,18 +246,7 @@ export default function NewsStream({
 
   return (
     <section aria-label={title} className="relative space-y-4">
-      <SectionHeader title={title} count={isLoading ? undefined : filtered.length}>
-        {digestTitle && filtered.length > 0 && (
-          <button onClick={copyDigest} className="btn btn-plain !min-h-9 !px-3 !text-[0.8125rem]" title="Copy the top stories as a Telegram-ready post">
-            <Copy className="h-4 w-4" /><span className="hidden sm:inline">Copy digest</span>
-          </button>
-        )}
-        {unreadCount > 0 && (
-          <button onClick={() => markManyReadWithUndo(toMark.map((s) => s.lead.link))} className="btn btn-plain !min-h-9 !px-3 !text-[0.8125rem]">
-            <CheckCheck className="h-4 w-4" /><span className="hidden sm:inline">Mark all read</span>
-          </button>
-        )}
-      </SectionHeader>
+      <SectionHeader title={title} count={isLoading ? undefined : filtered.length} />
 
       {showTopics && topics.length > 1 && (
         <div className="-mx-4 overflow-x-auto px-4 pb-0.5 scrollbar-none sm:mx-0 sm:px-0">
@@ -281,31 +271,46 @@ export default function NewsStream({
       )}
 
       <div className="flex flex-wrap items-center gap-2">
-        {searchQuery === undefined && <div className="relative min-w-[200px] flex-1">
-          <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <input
-            type="search" value={query} onChange={(e) => setQuery(e.target.value)}
-            placeholder="Filter these stories" aria-label="Filter stories"
-            className="field !pl-10 !pr-9 [&::-webkit-search-cancel-button]:hidden"
-          />
-          {query && (
-            <button onClick={() => setQuery('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-full p-1 text-muted-foreground hover:text-foreground" aria-label="Clear filter">
-              <X className="h-4 w-4" />
-            </button>
-          )}
-        </div>}
+        {searchQuery === undefined && (
+          <div className="relative min-w-[180px] flex-1">
+            <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <input
+              type="search" value={query} onChange={(e) => setQuery(e.target.value)}
+              placeholder="Filter these stories" aria-label="Filter stories"
+              className="field !pl-10 !pr-9 [&::-webkit-search-cancel-button]:hidden"
+            />
+            {query && (
+              <button onClick={() => setQuery('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-full p-1 text-muted-foreground hover:text-foreground" aria-label="Clear filter">
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+        )}
+
+        <div className="segmented" role="radiogroup" aria-label="Show">
+          {([[false, 'All'], [true, 'Unread']] as const).map(([val, text]) => (
+            <button key={text} role="radio" aria-checked={unreadOnly === val} onClick={() => setUnreadOnly(val)}
+              className={cn('segmented-item', unreadOnly === val && 'bg-card shadow-1')}>{text}</button>
+          ))}
+        </div>
+
         <FilterMenu sources={sources ?? []} source={source} onSource={setSource} range={range} onRange={setRange} sort={sort} onSort={setSort} />
-        <button onClick={() => setUnreadOnly((v) => !v)} aria-pressed={unreadOnly} className={cn('btn', unreadOnly ? 'btn-primary' : 'btn-plain')}>
-          <Circle className={cn('h-3 w-3', unreadOnly && 'fill-current')} /> Unread
-        </button>
+
         <div className="segmented" role="group" aria-label="Layout">
-          {([['cards', LayoutGrid, 'Cards'], ['list', Rows3, 'List']] as const).map(([id, Icon, label]) => (
+          {([['list', Rows3, 'List'], ['cards', LayoutGrid, 'Cards']] as const).map(([id, Icon, label]) => (
             <button key={id} onClick={() => setView(id)} aria-pressed={view === id} title={label} aria-label={label}
               className={cn('segmented-item !px-2.5', view === id && 'bg-card shadow-1')}>
               <Icon className="h-4 w-4" />
             </button>
           ))}
         </div>
+
+        <MoreMenu
+          canMark={unreadCount > 0}
+          canCopy={Boolean(digestTitle) && filtered.length > 0}
+          onMark={() => markManyReadWithUndo(toMark.map((s) => s.lead.link))}
+          onCopy={copyDigest}
+        />
       </div>
 
       <ActiveFilters sourceName={sources?.find((x) => x.id === source)?.name} range={range} sort={sort}
@@ -336,4 +341,22 @@ export default function NewsStream({
   );
 }
 
-
+/** Rare actions live here so the main row stays calm. */
+function MoreMenu({ canMark, canCopy, onMark, onCopy }: { canMark: boolean; canCopy: boolean; onMark: () => void; onCopy: () => void }) {
+  const { open, setOpen, ref } = usePopover();
+  if (!canMark && !canCopy) return null;
+  const item = 'flex w-full items-center gap-2.5 rounded-[10px] px-3 py-2.5 text-left text-sm font-medium transition-colors hover:bg-[var(--mat-fill-2)]';
+  return (
+    <div ref={ref} className="relative">
+      <button onClick={() => setOpen((v) => !v)} aria-expanded={open} aria-haspopup="menu" aria-label="More actions" title="More" className="icon-btn !h-10 !w-10 bg-[var(--mat-fill-2)] text-foreground">
+        <MoreHorizontal className="h-[18px] w-[18px]" />
+      </button>
+      {open && (
+        <div role="menu" className="absolute right-0 top-[calc(100%+8px)] z-30 w-60 animate-fade-in rounded-[var(--r-md)] bg-popover p-1.5 shadow-float ring-1 ring-[var(--mat-hairline)]">
+          {canMark && <button role="menuitem" className={item} onClick={() => { setOpen(false); onMark(); }}><CheckCheck className="h-4 w-4 text-muted-foreground" /> Mark all as read</button>}
+          {canCopy && <button role="menuitem" className={item} onClick={() => { setOpen(false); onCopy(); }}><Copy className="h-4 w-4 text-muted-foreground" /> Copy as Telegram digest</button>}
+        </div>
+      )}
+    </div>
+  );
+}
