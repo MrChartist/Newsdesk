@@ -5,48 +5,6 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function formatPrice(value: number | null | undefined): string {
-  if (value == null) return '—';
-  return new Intl.NumberFormat('en-IN', {
-    style: 'currency',
-    currency: 'INR',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(value);
-}
-
-export function formatChange(value: number | null | undefined): string {
-  if (value == null) return '—';
-  const sign = value >= 0 ? '+' : '';
-  return `${sign}${value.toFixed(2)}%`;
-}
-
-export function formatMarketCap(value: number | null | undefined): string {
-  if (value == null) return '—';
-  if (value >= 1e12) return `₹${(value / 1e12).toFixed(1)}T`;
-  if (value >= 1e9) return `₹${(value / 1e9).toFixed(1)}B`;
-  if (value >= 1e7) return `₹${(value / 1e7).toFixed(0)}Cr`;
-  if (value >= 1e5) return `₹${(value / 1e5).toFixed(0)}L`;
-  return `₹${value.toLocaleString('en-IN')}`;
-}
-
-export function formatVolume(value: number | null | undefined): string {
-  if (value == null) return '—';
-  if (value >= 1e7) return `${(value / 1e7).toFixed(1)}Cr`;
-  if (value >= 1e5) return `${(value / 1e5).toFixed(1)}L`;
-  if (value >= 1e3) return `${(value / 1e3).toFixed(1)}K`;
-  return value.toLocaleString('en-IN');
-}
-
-export function getRecommendationLabel(value: number | null | undefined): { label: string; color: string } {
-  if (value == null) return { label: 'N/A', color: 'text-muted-foreground' };
-  if (value >= 0.5) return { label: 'Strong Buy', color: 'text-profit' };
-  if (value >= 0.1) return { label: 'Buy', color: 'text-profit' };
-  if (value > -0.1) return { label: 'Neutral', color: 'text-warning' };
-  if (value > -0.5) return { label: 'Sell', color: 'text-loss' };
-  return { label: 'Strong Sell', color: 'text-loss' };
-}
-
 export function timeAgo(dateStr: string): string {
   const now = new Date();
   const date = new Date(dateStr);
@@ -60,4 +18,18 @@ export function timeAgo(dateStr: string): string {
   if (diffHr < 24) return `${diffHr}h ago`;
   if (diffDay < 7) return `${diffDay}d ago`;
   return date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+}
+
+export function formatDateIN(d: Date = new Date()): string {
+  return d.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' });
+}
+
+export function greeting(d: Date = new Date()): string {
+  const h = Number(d.toLocaleString('en-IN', { hour: 'numeric', hour12: false, timeZone: 'Asia/Kolkata' }));
+  return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
+}
+
+/** Compact count: 1,248 → 1.2k */
+export function compact(n: number): string {
+  return n >= 1000 ? `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k` : String(n);
 }

@@ -1,61 +1,25 @@
-import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { Link } from 'react-router-dom';
+import { useCompanies } from '@/hooks/useNewsFeed';
 import { cn } from '@/lib/utils';
-import { useStockLookup } from '@/hooks/useStockData';
-import { useNavigate } from 'react-router-dom';
-import StockMiniCard from './StockMiniCard';
 
-interface Props {
-  symbol: string;
-}
-
-export default function CompanyMentionTag({ symbol }: Props) {
-  const getStock = useStockLookup();
-  const stock = getStock(symbol);
-  const navigate = useNavigate();
-  const [hovered, setHovered] = useState(false);
-
-  // Stop propagation so clicking the tag doesn't trigger the card's main link
-  const handleClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    navigate(`/company/${symbol}`);
-  };
-
+/** $SYMBOL chip → that company's news. */
+export default function CompanyMentionTag({ symbol, className, count, quiet }: { symbol: string; className?: string; count?: number; quiet?: boolean }) {
+  const { nameOf } = useCompanies();
   return (
-    <div
-      className="relative inline-block"
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
+    <Link
+      to={`/company/${symbol}`}
+      onClick={(e) => e.stopPropagation()}
+      title={`News about ${nameOf(symbol)}`}
+      className={cn(
+        quiet
+          // plain text until hovered — keeps cards calm
+          ? 'inline-flex items-center gap-1 text-xs font-semibold text-muted-foreground transition-colors hover:text-primary hover:underline underline-offset-2'
+          : 'inline-flex items-center gap-1 rounded-full bg-[var(--mat-fill-2)] px-2.5 py-1 text-[11px] font-bold leading-none transition-colors hover:bg-primary/15 hover:text-primary',
+        className,
+      )}
     >
-      <button
-        onClick={handleClick}
-        className={cn(
-          "inline-flex items-center px-1.5 py-0.5 rounded-[4px] text-xs font-semibold tracking-wide transition-colors",
-          "bg-white/10 hover:bg-primary/20 hover:text-primary ring-1 ring-white/10"
-        )}
-      >
-        ${symbol}
-      </button>
-
-      <AnimatePresence>
-        {hovered && stock && (
-          <motion.div
-            initial={{ opacity: 0, y: 4, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 4, scale: 0.95 }}
-            transition={{ duration: 0.15 }}
-            className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 min-w-[200px]"
-            onClick={handleClick} // Clicking the popover also goes to the company page
-          >
-            <div className="glass rounded-xl p-1 shadow-xl cursor-pointer hover:bg-white/5 transition-colors">
-              <StockMiniCard stock={stock} compact={false} className="border-none bg-transparent" />
-            </div>
-            {/* Arrow */}
-            <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-[1px] border-4 border-transparent border-t-[var(--glass-bg)]" />
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
+      ${symbol}
+      {count != null && <span className="font-semibold text-muted-foreground tnum">{count}</span>}
+    </Link>
   );
 }

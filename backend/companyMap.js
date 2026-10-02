@@ -1,6 +1,5 @@
 // Company name ↔ symbol mapping for 200+ NSE/BSE stocks
 // Used by feedProxy to enrich news with stock mentions
-// Used by tvScanner to resolve symbols
 
 const COMPANY_MAP = {
   // Nifty 50 Heavyweights
@@ -139,27 +138,43 @@ const COMPANY_MAP = {
   'BANKNIFTY': ['Bank Nifty', 'Nifty Bank', 'BankNifty'],
 };
 
+// Single common words that are also companies. They only count as a mention when
+// written with a capital letter AND the text has finance context ("Titan shares", "Reliance Q2 results").
+const AMBIGUOUS = new Set(['reliance', 'titan', 'apollo', 'hero', 'eternal', 'trent', 'larsen', 'britannia', 'union bank', 'power grid', 'indian oil', 'eicher']);
+const FINANCE_CONTEXT = /\b(shares?|stocks?|NSE|BSE|Nifty|Sensex|Ltd|Limited|Q[1-4]|FY\s?\d{2}|earnings|dividend|IPO|market cap|brokerage|target price|stake|results|profit|revenue|crore|Rs\.?|investors?|analysts?)\b|₹/i;
+
+// Known look-alikes: "Apollo Global" is a US fund, "Hero Group" isn't Hero MotoCorp, etc.
+const NOT_FOLLOWED_BY = { apollo: /^\s+(Global|Management|Tyres?|Group|Hospitality)\b/, hero: /^\s+(Group|Honda|Wars)\b/, eternal: /^\s+(Sunshine|Love|City)\b/ };
+
+const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 /**
  * Match company mentions in text against the company map.
+ * - short aliases (ITC, LT, IOC, SBI…) must match case-exactly, so "it", "lt" and "ioc" don't fire
+ * - ambiguous single words need a capital letter and finance context
  * Returns array of matched symbols.
  */
 function matchCompanies(text) {
   if (!text) return [];
   const matched = new Set();
-  const upperText = text.toUpperCase();
+  const hasContext = FINANCE_CONTEXT.test(text);
 
   for (const [symbol, aliases] of Object.entries(COMPANY_MAP)) {
     for (const alias of aliases) {
-      // Use word boundary-aware matching
-      const escapedAlias = alias.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const regex = new RegExp(`\\b${escapedAlias}\\b`, 'i');
-      if (regex.test(text)) {
-        matched.add(symbol);
-        break;
-      }
+      const body = escapeRe(alias);
+      const ambiguous = AMBIGUOUS.has(alias.toLowerCase());
+      const shortAlias = alias.length <= 4 && alias === alias.toUpperCase();
+      const caseSensitive = ambiguous || shortAlias;
+      const re = new RegExp(`(?<![\\w&])${body}(?![\\w&])`, caseSensitive ? '' : 'i');
+      const m = re.exec(text);
+      if (!m) continue;
+      if (ambiguous && !hasContext) continue;
+      const bad = NOT_FOLLOWED_BY[alias.toLowerCase()];
+      if (bad && bad.test(text.slice(m.index + m[0].length))) continue;
+      matched.add(symbol);
+      break;
     }
   }
-
   return Array.from(matched);
 }
 

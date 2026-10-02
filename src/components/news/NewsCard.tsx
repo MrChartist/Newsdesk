@@ -1,89 +1,110 @@
 import { Bookmark } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { blurbOf } from '@/lib/blurb';
+import { getCategoryMeta } from '@/data/categories';
 import type { NewsItem } from '@/types/news';
+import type { Story } from '@/lib/stories';
 import { useBookmarks } from '@/hooks/useBookmarks';
+import { useReadArticles } from '@/hooks/useReadArticles';
+import { useHoverPrefetch } from '@/hooks/useArticleSummary';
 import FeedSourceBadge from './FeedSourceBadge';
-import CategoryBadge from './CategoryBadge';
 import TimeAgo from './TimeAgo';
+import Highlight from './Highlight';
+import Coverage from './Coverage';
 import CompanyMentionTag from '../company/CompanyMentionTag';
 
-interface Props {
-  item: NewsItem;
-  onSelect?: (item: NewsItem) => void;
+export interface StoryProps {
+  story: Story;
+  query?: string;
+  selected?: boolean;
+  domId?: string;
+  onOpen: (story: Story) => void;
 }
 
-export default function NewsCard({ item, onSelect }: Props) {
-  const isNew = (Date.now() - new Date(item.pubDate).getTime()) < 5 * 60 * 1000;
+export function BookmarkButton({ item, className }: { item: NewsItem; className?: string }) {
   const { isBookmarked, toggle } = useBookmarks();
   const saved = isBookmarked(item.link);
+  return (
+    <button
+      onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggle(item); }}
+      title={saved ? 'Remove from saved' : 'Save for later'}
+      aria-label={saved ? 'Remove from saved' : 'Save for later'}
+      aria-pressed={saved}
+      className={cn(
+        'glass flex h-9 w-9 items-center justify-center rounded-full transition-all',
+        saved ? 'text-ios-orange opacity-100' : 'text-foreground/80 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 max-lg:hidden',
+        className,
+      )}
+    >
+      <Bookmark className={cn('h-4 w-4', saved && 'fill-current')} />
+    </button>
+  );
+}
 
-  const handleClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    onSelect?.(item);
-  };
+export function useStoryRead(story: Story) {
+  const { isRead, markRead } = useReadArticles();
+  return { read: isRead(story.lead.link), open: (cb: (s: Story) => void) => { markRead(story.lead.link); cb(story); } };
+}
 
-  const handleBookmark = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    toggle(item);
-  };
+/** Image-led card. */
+export default function NewsCard({ story, query, selected, domId, onOpen }: StoryProps) {
+  const item = story.lead;
+  const isNew = Date.now() - story.time < 5 * 60 * 1000;
+  const { read, open } = useStoryRead(story);
+  const go = () => open(onOpen);
+  const prefetch = useHoverPrefetch(story);
+  const blurb = blurbOf(item);
 
   return (
-    <div
-      onClick={handleClick}
-      className={cn("premium-card flex flex-col group cursor-pointer overflow-hidden relative", isNew && "row-new")}
+    <article
+      id={domId}
+      role="link"
+      tabIndex={0}
+      {...prefetch}
+      onClick={go}
+      onKeyDown={(e) => { if (e.key === 'Enter') go(); }}
+      className={cn(
+        'card card-interactive group relative flex cursor-pointer flex-col overflow-hidden',
+        isNew && 'row-new', selected && 'ring-2 ring-primary/60',
+      )}
     >
-      {/* Bookmark toggle */}
-      <button
-        onClick={handleBookmark}
-        title={saved ? 'Remove from saved' : 'Save article'}
-        aria-label={saved ? 'Remove from saved' : 'Save article'}
-        className={cn(
-          "absolute top-2.5 right-2.5 z-10 p-1.5 rounded-lg backdrop-blur-md ring-1 transition-all",
-          saved
-            ? "bg-primary/20 ring-primary/40 text-primary opacity-100"
-            : "bg-black/40 ring-white/10 text-white/80 opacity-0 group-hover:opacity-100 hover:text-primary"
-        )}
-      >
-        <Bookmark className={cn("w-3.5 h-3.5", saved && "fill-current")} />
-      </button>
-
       {item.image && (
-        <div className="w-full h-40 overflow-hidden relative">
+        <div className="relative aspect-[16/9] w-full overflow-hidden bg-[var(--mat-fill-1)]">
           <img
             src={item.image}
             alt=""
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
             loading="lazy"
-            onError={(e) => { e.currentTarget.style.display = 'none'; }}
+            className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04]"
+            onError={(e) => { (e.currentTarget.parentElement as HTMLElement).style.display = 'none'; }}
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+          <BookmarkButton item={item} className="absolute right-3 top-3" />
         </div>
       )}
 
-      <div className="p-4 flex flex-col flex-1 gap-3">
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-2 flex-wrap">
-            <FeedSourceBadge source={item.source} />
-            <CategoryBadge category={item.category} />
-          </div>
-          <TimeAgo date={item.pubDate} className="shrink-0" />
+      <div className="flex flex-1 flex-col gap-2 p-5">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <FeedSourceBadge source={item.source} />
+          <span aria-hidden>·</span>
+          <TimeAgo date={new Date(story.time).toISOString()} />
+          {!item.image && <BookmarkButton item={item} className="ml-auto !h-8 !w-8 !shadow-none" />}
         </div>
 
-        <h3 className="font-display font-semibold text-base leading-snug group-hover:text-primary transition-colors line-clamp-3">
-          {item.title}
+        <h3 className={cn('line-clamp-3 font-display text-[1.125rem] font-bold leading-snug tracking-tight', read ? 'text-foreground/55' : 'text-foreground')}>
+          <Highlight text={item.title} query={query} />
         </h3>
 
-        <p className="text-sm text-muted-foreground line-clamp-3 leading-relaxed">
-          {item.description}
-        </p>
+        {blurb && (
+          <p className="line-clamp-2 text-[0.9375rem] leading-relaxed text-muted-foreground">
+            <Highlight text={blurb} query={query} />
+          </p>
+        )}
 
-        <div className="mt-auto pt-4 flex flex-wrap items-center gap-1.5">
-          {item.companies.map((symbol) => (
-            <CompanyMentionTag key={symbol} symbol={symbol} />
-          ))}
+        <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-1 pt-3 text-xs text-muted-foreground">
+          <span>{getCategoryMeta(item.category).label}</span>
+          {story.companies.slice(0, 2).map((symbol) => <CompanyMentionTag key={symbol} symbol={symbol} quiet />)}
+          <Coverage story={story} className="ml-auto" />
         </div>
       </div>
-    </div>
+    </article>
   );
 }

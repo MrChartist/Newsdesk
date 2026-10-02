@@ -2,10 +2,11 @@
 import express from 'express';
 import cors from 'cors';
 import { fetchAllFeeds, getFeedConfigs, FEEDS, fetchFeed } from './feedProxy.js';
-import { fetchStocks, fetchIndices, getTopMovers, getSectorPerformance, getSectorDetail } from './tvScanner.js';
-import { matchCompanies, getCompanyName } from './companyMap.js';
-import { getArticlesByCompany, getArticlesByCompanies } from './db.js';
+import { COMPANY_MAP, getCompanyName } from './companyMap.js';
+import { getArticlesByCompany } from './db.js';
 import { isGoogleNewsUrl, resolveGoogleNewsUrl } from './gnewsResolver.js';
+import { safeGet } from './safeFetch.js';
+import { summarizeArticle, summarizeBlurb } from './summarize.js';
 
 const app = express();
 const PORT = 3001;
@@ -45,147 +46,52 @@ app.get('/api/feeds/:sourceId', async (req, res) => {
   }
 });
 
-// ─── Market Data (TradingView) ───────────────
-app.get('/api/market/all', async (req, res) => {
-  try {
-    const stocks = await fetchStocks();
-    res.json({ count: Object.keys(stocks).length, stocks });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+// ─── Companies (news-only) ───────────────────
+// Symbol → display name directory, used to label company mentions in the UI.
+app.get('/api/companies', (req, res) => {
+  res.json(Object.keys(COMPANY_MAP).map((symbol) => ({ symbol, name: getCompanyName(symbol) })));
 });
 
-app.get('/api/market/indices', async (req, res) => {
-  try {
-    const indices = await fetchIndices();
-    res.json(indices);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.get('/api/market/movers', async (req, res) => {
-  try {
-    const stocks = await fetchStocks();
-    const movers = getTopMovers(stocks);
-    res.json(movers);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.get('/api/market/sectors', async (req, res) => {
-  try {
-    const stocks = await fetchStocks();
-    const sectors = getSectorPerformance(stocks);
-    res.json(sectors);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// ─── Sector Detail (constituents + leaders + sector-wide news) ──
-app.get('/api/market/sector/:name', async (req, res) => {
-  try {
-    const stocks = await fetchStocks();
-    const name = req.params.name;
-    const detail = getSectorDetail(stocks, name);
-    if (!detail) return res.status(404).json({ error: `Sector "${name}" not found` });
-
-    // Join sector → constituent symbols → their archived news
-    const news = getArticlesByCompanies(detail.stocks, 30);
-    res.json({ ...detail, news: { count: news.length, items: news.slice(0, 60) } });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.get('/api/market/:symbol', async (req, res) => {
-  try {
-    const stocks = await fetchStocks();
-    const symbol = req.params.symbol.toUpperCase();
-    const stock = stocks[symbol];
-    if (!stock) return res.status(404).json({ error: `${symbol} not found` });
-    res.json(stock);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// ─── Company (combined: stock + news) ────────
-app.get('/api/company/:symbol', async (req, res) => {
+app.get('/api/company/:symbol', (req, res) => {
   try {
     const symbol = req.params.symbol.toUpperCase();
-    const stocks = await fetchStocks();
-
-    const stock = stocks[symbol] || null;
-    const companyName = getCompanyName(symbol);
-
-    // Query company news directly from SQLite
     const news = getArticlesByCompany(symbol, 30);
-
-    res.json({
-      symbol,
-      name: companyName,
-      stock,
-      news: { count: news.length, items: news.slice(0, 50) },
-    });
+    res.json({ symbol, name: getCompanyName(symbol), news: { count: news.length, items: news.slice(0, 80) } });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
+
+// ─── Article loading (shared by reader proxy and summariser) ──
+async function loadArticle(rawUrl) {
+  const parsed = new URL(rawUrl); // throws on garbage
+  if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error('bad scheme');
+
+  // Google News links are JS redirects — resolve to the real publisher URL first
+  let target = parsed;
+  if (isGoogleNewsUrl(parsed.href)) {
+    try { target = new URL(await resolveGoogleNewsUrl(parsed.href)); }
+    catch (e) { console.warn(`[Article] GN resolve failed: ${e.message}`); }
+  }
+
+  const { res, url } = await safeGet(target);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const html = await res.text();
+  return { html, finalUrl: url.href };
+}
 
 // ─── Article Proxy (bypass X-Frame-Options) ──
 app.get('/api/article-proxy', async (req, res) => {
   const url = req.query.url;
   if (!url) return res.status(400).json({ error: 'Missing url param' });
-
-  // Only proxy http(s) URLs — reject file:, data:, internal schemes etc.
-  let parsedUrl;
-  try {
-    parsedUrl = new URL(url);
-    if (!['http:', 'https:'].includes(parsedUrl.protocol)) throw new Error('bad scheme');
-  } catch {
-    return res.status(400).json({ error: 'Invalid url param' });
-  }
+  try { new URL(url); } catch { return res.status(400).json({ error: 'Invalid url param' }); }
 
   try {
-    // Google News links are JS redirects that render blank in the iframe —
-    // resolve them to the real publisher URL before proxying.
-    let target = parsedUrl;
-    if (isGoogleNewsUrl(parsedUrl.href)) {
-      try {
-        target = new URL(await resolveGoogleNewsUrl(parsedUrl.href));
-      } catch (e) {
-        console.warn(`[Proxy] GN resolve failed: ${e.message}`);
-      }
-    }
-
-    const response = await fetch(target, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.5',
-      },
-      signal: AbortSignal.timeout(15_000),
-      redirect: 'follow',
-    });
-
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
-    let html = await response.text();
-
-    // Strip <meta http-equiv="Content-Security-Policy"> tags — they survive
-    // proxying (unlike response headers) and block assets inside the iframe
+    let { html, finalUrl } = await loadArticle(url);
+    // CSP <meta> tags survive proxying (unlike headers) and block assets in the iframe
     html = html.replace(/<meta[^>]+http-equiv=["']?content-security-policy["']?[^>]*>/gi, '');
-
-    // Inject a <base> tag so relative URLs resolve correctly
-    // (response.url reflects the final URL after redirects)
-    const baseTag = `<base href="${response.url || url}" target="_self">`;
-    html = html.replace(/<head([^>]*)>/i, `<head$1>${baseTag}`);
-
-    // Serving from our own origin drops the publisher's X-Frame-Options /
-    // CSP headers, so the article can render inside the reader iframe
+    // <base> so relative URLs resolve against the publisher
+    html = html.replace(/<head([^>]*)>/i, `<head$1><base href="${finalUrl}" target="_self">`);
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.send(html);
   } catch (err) {
@@ -193,14 +99,61 @@ app.get('/api/article-proxy', async (req, res) => {
   }
 });
 
+// ─── Article Summary (extractive, no AI) ─────
+const summaryCache = new Map(); // url -> { ts, data }
+const SUMMARY_TTL = 6 * 3600_000;
+const SUMMARY_MAX = 600;
+
+app.get('/api/summary', async (req, res) => {
+  const url = req.query.url;
+  if (!url) return res.status(400).json({ error: 'Missing url param' });
+  try { new URL(url); } catch { return res.status(400).json({ error: 'Invalid url param' }); }
+
+  const hit = summaryCache.get(url);
+  if (hit && Date.now() - hit.ts < SUMMARY_TTL) return res.json(hit.data);
+
+  const title = String(req.query.title || '');
+  const desc = String(req.query.desc || '');
+
+  try {
+    let { html, finalUrl } = await loadArticle(url);
+
+    // BizToc pages are stubs that point at the real article — follow that link once
+    if (/(^|\.)biztoc\.com$/.test(new URL(finalUrl).hostname)) {
+      const m = html.match(/This story appeared on\s*<a[^>]+href=["']([^"']+)["']/i)
+        || html.match(/<h1[\s\S]*?<\/h1>\s*(?:<[^>]+>\s*)*<a[^>]+href=["'](https?:\/\/[^"']+)["']/i);
+      if (m) {
+        try { ({ html, finalUrl } = await loadArticle(m[1])); }
+        catch (e) { console.warn(`[Summary] BizToc follow failed: ${e.message}`); }
+      }
+    }
+
+    const data = {
+      ...summarizeArticle(html, { fallbackTitle: title, fallbackDescription: desc }),
+      host: new URL(finalUrl).hostname.replace(/^www\./, ''),
+      url: finalUrl,
+    };
+    remember(url, data);
+    res.json(data);
+  } catch (err) {
+    // Publisher blocked us (403 etc.) — degrade to a summary of the feed's own blurb
+    console.warn(`[Summary] ${err.message} — ${url.slice(0, 80)}`);
+    const data = { ...summarizeBlurb(title, [desc]), host: new URL(url).hostname.replace(/^www\./, ''), url, reason: err.message };
+    remember(url, data);
+    res.json(data);
+  }
+});
+
+function remember(url, data) {
+  if (summaryCache.size >= SUMMARY_MAX) summaryCache.delete(summaryCache.keys().next().value);
+  summaryCache.set(url, { ts: Date.now(), data });
+}
+
 // ─── Start ───────────────────────────────────
 app.listen(PORT, () => {
   console.log(`\n  🗞️  Newsdesk Backend running on http://localhost:${PORT}`);
   console.log(`  📡  ${FEEDS.length} RSS feeds configured (incl. geopolitics, Iran, Middle East, defense)`);
-  console.log(`  📊  TradingView Scanner active\n`);
 
   // Warm up caches
   fetchAllFeeds().then(items => console.log(`  ✅  Initial feed load: ${items.length} articles`));
-  fetchStocks().then(stocks => console.log(`  ✅  Initial stock scan: ${Object.keys(stocks).length} stocks`));
-  fetchIndices().then(idx => console.log(`  ✅  Index data loaded: ${Object.keys(idx).length} indices`));
 });

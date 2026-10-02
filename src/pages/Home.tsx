@@ -1,244 +1,82 @@
-import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
-import { motion } from 'framer-motion';
-import { useNewsFeed, useFeedSources } from '@/hooks/useNewsFeed';
-import { useDebounce } from '@/hooks/useDebounce';
-import { useBookmarks } from '@/hooks/useBookmarks';
-import HeroStats from '@/components/stats/HeroStats';
-import MarketTicker from '@/components/market/MarketTicker';
-import MarketPulse from '@/components/market/MarketPulse';
-import TopMovers from '@/components/market/TopMovers';
-import SectorHeatmap from '@/components/market/SectorHeatmap';
-import NewsFeed from '@/components/news/NewsFeed';
-import FeedControls, { type SortMode } from '@/components/news/FeedControls';
+import { useMemo, useState } from 'react';
+import { useStories } from '@/hooks/useStories';
+import { useDocumentTitle } from '@/hooks/useDocumentTitle';
+import { useReadArticles } from '@/hooks/useReadArticles';
+import { Copy } from 'lucide-react';
+import { formatDigest, copyText } from '@/lib/share';
+import { toast } from '@/lib/toast';
+import NewsStream from '@/components/news/NewsStream';
+import LeadStory from '@/components/news/LeadStory';
+import TrendingStrip from '@/components/news/TrendingStrip';
 import ArticleModal from '@/components/news/ArticleModal';
-import { CATEGORIES } from '@/data/categories';
-import { cn } from '@/lib/utils';
-import type { NewsItem } from '@/types/news';
+import { PageHeader, SectionHeader } from '@/components/ui/Section';
+import { formatDateIN, greeting } from '@/lib/utils';
+import { coverage, type Story } from '@/lib/stories';
 
-// Default categories to show in the curated "All Intelligence" view
-const DEFAULT_CATEGORIES = [
-  'Markets', 'Stocks', 'Corporate', 'Business', 'Economy', 'Money', 'IPO', 'Tech', 'AI',
-  'Geopolitics', 'MiddleEast', 'Defense', 'World'
-];
-
-const PAGE_SIZE = 24;
+/** Rank by how widely a story is covered, whether it has an image, and how fresh it is. */
+function pickTop(stories: Story[]) {
+  const now = Date.now();
+  const scored = stories
+    .filter((s) => now - s.time < 18 * 3600_000)
+    .map((s) => ({ s, score: coverage(s) * 2 + (s.lead.image ? 1.5 : 0) - ((now - s.time) / 3600_000) * 0.2 }))
+    .sort((a, b) => b.score - a.score)
+    .map((x) => x.s);
+  const lead = scored.find((s) => s.lead.image) ?? scored[0];
+  if (!lead) return { lead: null, rest: [] as Story[] };
+  return { lead, rest: scored.filter((s) => s.id !== lead.id).slice(0, 4) };
+}
 
 export default function Home() {
-  const { data: newsData, isLoading, isError, refetch } = useNewsFeed();
-  const { data: feedSources } = useFeedSources();
-  const { items: savedItems, count: savedCount } = useBookmarks();
+  useDocumentTitle();
+  const { stories, isLoading, isError, refetch } = useStories();
+  const [open, setOpen] = useState<Story | null>(null);
 
-  const [activeCategory, setActiveCategory] = useState<string | null>(null);
-  const [search, setSearch] = useState('');
-  const [source, setSource] = useState('');
-  const [sort, setSort] = useState<SortMode>('newest');
-  const [savedOnly, setSavedOnly] = useState(false);
-  const [page, setPage] = useState(1);
-  const [selectedArticle, setSelectedArticle] = useState<NewsItem | null>(null);
+  const { lead, rest } = useMemo(() => pickTop(stories), [stories]);
+  const topStories = useMemo(() => (lead ? [lead, ...rest] : []), [lead, rest]);
+  const exclude = useMemo(() => new Set([lead?.id, ...rest.map((s) => s.id)].filter(Boolean) as string[]), [lead, rest]);
+  const { isRead } = useReadArticles();
+  const { today, unread } = useMemo(() => {
+    const recent = stories.filter((s) => Date.now() - s.time < 24 * 3600_000);
+    return { today: recent.length, unread: recent.filter((s) => !isRead(s.lead.link)).length };
+  }, [stories, isRead]);
 
-  const debouncedSearch = useDebounce(search, 200);
-  const searchRef = useRef<HTMLInputElement>(null);
-  const sentinelRef = useRef<HTMLDivElement>(null);
-
-  // "/" focuses the search box (unless already typing in a field)
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      const tag = (e.target as HTMLElement)?.tagName;
-      if (e.key === '/' && tag !== 'INPUT' && tag !== 'TEXTAREA' && tag !== 'SELECT') {
-        e.preventDefault();
-        searchRef.current?.focus();
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, []);
-
-  const isFiltering = Boolean(debouncedSearch.trim() || source || savedOnly);
-
-  const filteredItems = useMemo(() => {
-    const base = savedOnly ? savedItems : (newsData?.items ?? []);
-    const q = debouncedSearch.trim().toLowerCase();
-
-    const result = base.filter((item) => {
-      // Category: explicit pick wins; otherwise curate the home view only when
-      // the user isn't actively searching/filtering.
-      if (activeCategory) {
-        if (item.category !== activeCategory) return false;
-      } else if (!isFiltering) {
-        if (!DEFAULT_CATEGORIES.includes(item.category)) return false;
-      }
-      if (source && item.source.id !== source) return false;
-      if (q) {
-        const hay = `${item.title} ${item.description} ${item.companies.join(' ')}`.toLowerCase();
-        if (!hay.includes(q)) return false;
-      }
-      return true;
-    });
-
-    result.sort((a, b) => {
-      if (sort === 'source') {
-        const cmp = a.source.name.localeCompare(b.source.name);
-        if (cmp !== 0) return cmp;
-        return new Date(b.pubDate).getTime() - new Date(a.pubDate).getTime();
-      }
-      const diff = new Date(a.pubDate).getTime() - new Date(b.pubDate).getTime();
-      return sort === 'oldest' ? diff : -diff;
-    });
-
-    return result;
-  }, [newsData?.items, savedItems, savedOnly, activeCategory, isFiltering, source, debouncedSearch, sort]);
-
-  // Reset pagination whenever the result set changes
-  useEffect(() => {
-    setPage(1);
-  }, [activeCategory, source, sort, savedOnly, debouncedSearch]);
-
-  const visibleItems = useMemo(
-    () => filteredItems.slice(0, page * PAGE_SIZE),
-    [filteredItems, page],
-  );
-  const hasMore = visibleItems.length < filteredItems.length;
-
-  // Infinite scroll
-  const loadMore = useCallback(() => setPage((p) => p + 1), []);
-  useEffect(() => {
-    if (!hasMore) return;
-    const el = sentinelRef.current;
-    if (!el) return;
-    const obs = new IntersectionObserver(
-      (entries) => entries[0].isIntersecting && loadMore(),
-      { rootMargin: '600px' },
-    );
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, [hasMore, loadMore]);
-
-  const clearCategory = (id: string | null) => {
-    setActiveCategory(id);
-    if (id) setSavedOnly(false);
+  const copyBrief = async () => {
+    const top = lead ? [lead, ...rest] : [];
+    toast((await copyText(formatDigest(`Top stories — ${formatDateIN()}`, top, 5))) ? 'Brief copied for Telegram' : 'Couldn’t copy — allow clipboard access');
   };
 
-  // Category tabs — mix of financial and geopolitical
-  const filterTabs = [
-    { id: null, label: 'All Intelligence' },
-    ...CATEGORIES.filter((c) => DEFAULT_CATEGORIES.includes(c.id)),
-  ];
-
-  const heading = savedOnly
-    ? 'Saved Articles'
-    : activeCategory
-      ? (CATEGORIES.find((c) => c.id === activeCategory)?.label || activeCategory)
-      : debouncedSearch.trim()
-        ? `Results for “${debouncedSearch.trim()}”`
-        : 'Market Intelligence';
-
   return (
-    <div className="space-y-5 pb-12">
-      {/* Quick Stats */}
-      <HeroStats />
-
-      {/* Live Index Strip (NIFTY / BANKNIFTY / SENSEX) */}
-      <MarketTicker />
-
-      {/* Market Overview — sentiment, movers, sectors */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-4">
-        <MarketPulse />
-        <SectorHeatmap />
-        <div className="lg:col-span-2">
-          <TopMovers />
-        </div>
-      </div>
-
-      {/* Search / filter / sort controls */}
-      <FeedControls
-        ref={searchRef}
-        search={search}
-        onSearchChange={setSearch}
-        sources={feedSources ?? []}
-        source={source}
-        onSourceChange={setSource}
-        sort={sort}
-        onSortChange={setSort}
-        savedOnly={savedOnly}
-        onToggleSaved={() => { setSavedOnly((v) => !v); setActiveCategory(null); }}
-        savedCount={savedCount}
-      />
-
-      {/* Category Filter Bar */}
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none -mx-1 px-1">
-        {filterTabs.map((tab) => {
-          const active = !savedOnly && (tab.id === null ? activeCategory === null : activeCategory === tab.id);
-          const meta = tab.id ? CATEGORIES.find((c) => c.id === tab.id) : null;
-          const Icon = meta?.icon;
-
-          return (
-            <button
-              key={tab.id ?? 'all'}
-              onClick={() => clearCategory(tab.id ?? null)}
-              className={cn(
-                "relative px-3.5 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap flex items-center gap-1.5",
-                active
-                  ? "text-foreground"
-                  : "text-muted-foreground hover:text-foreground hover:bg-white/5"
-              )}
-            >
-              {Icon && <Icon className="w-3.5 h-3.5" style={active ? { color: meta?.color } : {}} />}
-              <span>{tab.label ?? tab.id}</span>
-              {active && (
-                <motion.div
-                  layoutId="category-pill"
-                  className="absolute inset-0 rounded-full bg-white/10 ring-1 ring-white/10 -z-10"
-                  initial={false}
-                  transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                />
-              )}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* News Grid */}
-      <div>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-display font-semibold flex items-center gap-2">
-            {heading}
-            <span className="text-sm text-muted-foreground font-normal px-2 py-0.5 rounded-full bg-white/5">
-              {filteredItems.length}
-            </span>
-          </h2>
-        </div>
-
-        <NewsFeed
-          items={visibleItems}
-          isLoading={isLoading && !savedOnly}
-          isError={isError && !savedOnly}
-          onRetry={() => refetch()}
-          onSelectArticle={setSelectedArticle}
-          emptyTitle={savedOnly ? 'No saved articles yet' : 'No articles found'}
-          emptyHint={
-            savedOnly
-              ? 'Tap the bookmark icon on any article to save it for later.'
-              : 'Try a different category, source, or search term.'
-          }
-        />
-
-        {/* Infinite-scroll sentinel + manual fallback */}
-        {hasMore && (
-          <div ref={sentinelRef} className="flex justify-center pt-8">
-            <button
-              onClick={loadMore}
-              className="px-5 py-2.5 rounded-xl bg-surface ring-1 ring-white/5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Load more ({filteredItems.length - visibleItems.length} remaining)
-            </button>
-          </div>
+    <div className="space-y-8">
+      <PageHeader
+        eyebrow={formatDateIN()}
+        title={greeting()}
+        subtitle={
+          stories.length
+            ? <><span className="font-semibold text-foreground tnum">{today.toLocaleString('en-IN')}</span> stories in the last 24 hours{unread > 0 && <> · <span className="font-semibold text-primary tnum">{unread.toLocaleString('en-IN')} unread</span></>}{unread === 0 && <> · <span className="font-semibold text-profit">all caught up</span></>}</>
+            : 'Loading the latest from the news desk…'
+        }
+        actions={lead && (
+          <button onClick={copyBrief} className="btn btn-plain" title="Copy the top stories as a Telegram-ready post">
+            <Copy className="h-4 w-4" /> Copy brief
+          </button>
         )}
-      </div>
-
-      <ArticleModal
-        item={selectedArticle}
-        onClose={() => setSelectedArticle(null)}
       />
+
+      <TrendingStrip stories={stories} />
+
+      {lead && (
+        <section aria-label="Top stories">
+          <SectionHeader title="Top stories" />
+          <LeadStory lead={lead} others={rest} onSelect={setOpen} />
+        </section>
+      )}
+
+      <NewsStream
+        stories={stories} isLoading={isLoading} isError={isError} onRetry={() => refetch()}
+        title="Latest" showTopics excludeIds={exclude} alsoMark={topStories}
+      />
+
+      <ArticleModal story={open} onClose={() => setOpen(null)} />
     </div>
   );
 }

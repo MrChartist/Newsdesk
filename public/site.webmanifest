@@ -1,0 +1,14 @@
+{
+  "name": "Newsdesk by Mr. Chartist",
+  "short_name": "Newsdesk",
+  "description": "Live Indian and global market news from 30+ sources.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0F0E0D",
+  "theme_color": "#0F0E0D",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
